@@ -30,8 +30,8 @@ class AppointmentChecker:
         """
         logger.info(f"🌐 Bright Data Unlocker API ile sayfa getiriliyor: {url}")
         
-        # Bright Data Unlocker API endpoint
-        api_url = "https://api.brightdata.com/unlocker/v1/fetch"
+        # Bright Data Web Unlocker API endpoint
+        api_url = "https://api.brightdata.com/request"
         
         # API Headers
         headers = {
@@ -39,14 +39,12 @@ class AppointmentChecker:
             "Authorization": f"Bearer {self.config.BRIGHTDATA_API_KEY}"
         }
         
-        # Request payload
+        # Request payload (Bright Data format)
         payload = {
+            "zone": "web_unlocker1",  # Zone name (default for Web Unlocker)
             "url": url,
-            "format": "html",  # HTML formatında dön
-            "country": "tr",   # Türkiye proxy kullan
-            "render": True,    # JavaScript render et
-            "wait_for_selector": "body",  # Body yüklenene kadar bekle
-            "timeout": 60000   # 60 saniye timeout
+            "format": "raw",  # Raw HTML response
+            "country": "tr"   # Turkey proxy
         }
         
         for attempt in range(1, max_retries + 1):
