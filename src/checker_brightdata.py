@@ -17,7 +17,7 @@ class AppointmentChecker:
         self.config = Config()
         self.session = requests.Session()
         
-    def fetch_with_brightdata(self, url, max_retries=3):
+    def fetch_with_brightdata(self, url, max_retries=2):
         """
         Bright Data Unlocker API ile sayfa getir
         
@@ -55,7 +55,7 @@ class AppointmentChecker:
                     api_url,
                     json=payload,
                     headers=headers,
-                    timeout=45  # 45 saniye (Railway'de navigation timeout oluyor)
+                    timeout=30  # 30 saniye (Railway'de daha hızlı fail)
                 )
                 
                 # Debug logging
@@ -75,8 +75,8 @@ class AppointmentChecker:
                         if 'navigation timeout' in brd_error.lower():
                             logger.warning(f"⚠️ Navigation timeout! Deneme {attempt}/{max_retries}")
                             if attempt < max_retries:
-                                logger.info(f"🔄 {attempt * 5}s bekleyip tekrar denenecek...")
-                                time.sleep(attempt * 5)
+                                logger.info(f"🔄 {attempt * 3}s bekleyip tekrar denenecek...")
+                                time.sleep(attempt * 3)
                                 continue
                         
                         logger.error("❌ Response boş! API yanıt veriyor ama içerik yok")

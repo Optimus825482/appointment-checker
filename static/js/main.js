@@ -3,6 +3,7 @@ let statusInterval = null;
 let statsInterval = null;
 
 let detailedLogsInterval = null;
+let isCheckingNow = false; // Çift tıklama koruması
 
 // Sayfa yüklendiğinde
 document.addEventListener('DOMContentLoaded', () => {
@@ -83,7 +84,14 @@ async function stopMonitoring() {
 
 // Anında kontrol
 async function checkNow() {
+    // Çift tıklama kontrolü
+    if (isCheckingNow) {
+        console.log('⚠️ Zaten kontrol yapılıyor, atlanıyor...');
+        return;
+    }
+    
     try {
+        isCheckingNow = true;
         addLog('⚡ Anında kontrol yapılıyor...', 'info');
         document.getElementById('checkNowBtn').disabled = true;
         
@@ -120,6 +128,7 @@ async function checkNow() {
     } finally {
         setTimeout(() => {
             document.getElementById('checkNowBtn').disabled = false;
+            isCheckingNow = false; // Kilidi aç
         }, 2000);
     }
 }
