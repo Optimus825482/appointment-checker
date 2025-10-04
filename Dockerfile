@@ -41,7 +41,9 @@ COPY . .
 # Chrome binary konumu
 ENV CHROME_BIN=/usr/bin/chromium
 ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
+
+# Default port (Railway override edecek)
 ENV PORT=5000
 
-# Başlatma komutu - shell ile PORT variable expansion
-CMD ["sh", "-c", "gunicorn src.app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1 --log-level info --access-logfile - --error-logfile -"]
+# Başlatma komutu - default 5000 ile
+CMD gunicorn src.app:app --bind 0.0.0.0:${PORT:-5000} --timeout 120 --workers 1 --log-level info --access-logfile - --error-logfile -
