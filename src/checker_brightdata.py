@@ -55,7 +55,7 @@ class AppointmentChecker:
                     api_url,
                     json=payload,
                     headers=headers,
-                    timeout=90  # API timeout
+                    timeout=45  # 45 saniye (Railway'de navigation timeout oluyor)
                 )
                 
                 # Debug logging
@@ -70,6 +70,15 @@ class AppointmentChecker:
                 
                 if response.status_code == 200:
                     if len(response.text) == 0:
+                        # Navigation timeout kontrolü
+                        brd_error = response.headers.get('x-brd-error', '')
+                        if 'navigation timeout' in brd_error.lower():
+                            logger.warning(f"⚠️ Navigation timeout! Deneme {attempt}/{max_retries}")
+                            if attempt < max_retries:
+                                logger.info(f"🔄 {attempt * 5}s bekleyip tekrar denenecek...")
+                                time.sleep(attempt * 5)
+                                continue
+                        
                         logger.error("❌ Response boş! API yanıt veriyor ama içerik yok")
                         logger.error(f"💡 Full Response: {response.content}")
                         logger.error(f"💡 Request Payload: {payload}")
