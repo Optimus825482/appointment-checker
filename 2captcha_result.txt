@@ -1,0 +1,5 @@
+2Captcha Turnstile Test Sonucu
+Tarih: 2025-10-04 13:36:41
+Süre: 15.39 saniye
+Kod: XXXX.DUMMY.TOKEN.XXXX
+CAPTCHA ID: 80803292584
