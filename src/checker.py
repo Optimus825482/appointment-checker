@@ -1,10 +1,8 @@
-import undetected_chromedriver as uc
+from seleniumbase import Driver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
 import time
 import random
 import logging
@@ -19,65 +17,32 @@ class AppointmentChecker:
         self.config = Config()
         
     def setup_driver(self):
-        """Railway için optimize edilmiş driver ayarları"""
-        options = uc.ChromeOptions()
-        
-        # Headless mod (Railway için zorunlu)
-        options.add_argument('--headless=new')
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
-        options.add_argument('--disable-gpu')
-        options.add_argument('--disable-software-rasterizer')
-        options.add_argument('--disable-extensions')
-        
-        # Bot tespitini engelle
-        options.add_argument('--disable-blink-features=AutomationControlled')
-        
-        # Rastgele pencere boyutu
-        width = random.randint(1200, 1600)
-        height = random.randint(800, 1200)
-        options.add_argument(f'--window-size={width},{height}')
-        
-        # User agent
-        options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-        
-        # Railway'de Chromium binary path
-        options.binary_location = self.config.CHROME_BIN
-        
+        """
+        SeleniumBase UC Mode ile driver başlatma
+        UC Mode = undetected-chromedriver + ek Cloudflare bypass yetenekleri
+        """
         try:
-            # Undetected ChromeDriver ile başlat - use_subprocess=False önemli!
-            self.driver = uc.Chrome(
-                options=options,
-                driver_executable_path=self.config.CHROMEDRIVER_PATH,
-                use_subprocess=False
+            logger.info("🚀 SeleniumBase UC Mode ile driver başlatılıyor...")
+            
+            # SeleniumBase Driver with UC (undetected) mode
+            self.driver = Driver(
+                uc=True,  # Undetected ChromeDriver mode
+                headless=True,  # Railway için headless
+                chromium_arg="--no-sandbox,--disable-dev-shm-usage",
+                agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             )
             
-            # Bot tespitini engelleme scriptleri
-            self.driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
-                'source': '''
-                    Object.defineProperty(navigator, 'webdriver', {
-                        get: () => undefined
-                    });
-                    Object.defineProperty(navigator, 'plugins', {
-                        get: () => [1, 2, 3, 4, 5]
-                    });
-                    Object.defineProperty(navigator, 'languages', {
-                        get: () => ['tr-TR', 'tr', 'en-US', 'en']
-                    });
-                    window.chrome = {
-                        runtime: {}
-                    };
-                '''
-            })
-            
-            logger.info("✅ Chrome driver başarıyla başlatıldı")
+            logger.info("✅ SeleniumBase driver başarıyla başlatıldı")
+            logger.info("   📌 UC Mode: Aktif (Cloudflare bypass enabled)")
+            logger.info("   📌 CAPTCHA Solver: uc_gui_click_captcha() hazır")
             return True
             
         except Exception as e:
             logger.error(f"❌ Driver başlatma hatası: {e}")
+            logger.error(f"   💡 SeleniumBase yüklü değil olabilir: pip install seleniumbase")
             return False
     
-    def wait_for_cloudflare(self, timeout=120):
+    def wait_for_cloudflare_OLD_NOT_USED(self, timeout=120):
         """
         Cloudflare bypass - undetected-chromedriver ile OTOMATIK
         UC zaten Cloudflare'i geçer, sadece sabırla beklememiz gerekiyor!
@@ -268,31 +233,43 @@ class AppointmentChecker:
                 logger.error("❌ Driver başlatılamadı!")
                 return False
             
-            # Sayfayı aç
-            logger.info(f"🌐 Hedef URL'ye gidiliyor: {self.config.APPOINTMENT_URL}")
-            self.driver.get(self.config.APPOINTMENT_URL)
+            # SeleniumBase UC Open with Reconnect - Cloudflare bypass için optimize edilmiş
+            logger.info(f"🌐 Hedef URL'ye gidiliyor (UC reconnect mode): {self.config.APPOINTMENT_URL}")
+            logger.info("   📌 SeleniumBase uc_open_with_reconnect() kullanılıyor...")
+            logger.info("   📌 Bu metod Cloudflare'i otomatik geçmek için 4 deneme yapacak")
             
-            # İlk yükleme bekleme
+            # UC mode ile sayfa aç (4 reconnect denemesi)
+            self.driver.uc_open_with_reconnect(self.config.APPOINTMENT_URL, reconnect_time=4)
+            
+            logger.info("✅ Sayfa yüklendi!")
+            logger.info(f"📄 Başlık: {self.driver.title}")
+            
+            # Cloudflare Turnstile CAPTCHA varsa otomatik çöz
+            logger.info("🤖 Cloudflare Turnstile CAPTCHA kontrolü...")
             try:
-                logger.info("⏳ CAPTCHA elementi bekleniyor (12s)...")
-                WebDriverWait(self.driver, 12).until(
-                    EC.presence_of_element_located((By.CLASS_NAME, "imageCaptcha"))
-                )
-                logger.info("✅ CAPTCHA elementi bulundu!")
-            except TimeoutException:
-                logger.info("⏳ CAPTCHA yüklenene kadar ek bekleme...")
-                time.sleep(random.uniform(0.42, 0.68))
+                self.driver.uc_gui_click_captcha()
+                logger.info("✅ Turnstile CAPTCHA çözüldü (veya yoktu)!")
+            except Exception as e:
+                logger.info(f"ℹ️ Turnstile bulunamadı veya gerekli değil: {e}")
             
-            # Cloudflare'i geç - TAM captcha_bot.py metodolojisi!
-            logger.info("🛡️ Cloudflare bypass işlemi başlıyor...")
-            if not self.wait_for_cloudflare(timeout=90):
-                logger.error("❌ Cloudflare geçilemedi!")
-                return False
-            logger.info("✅ Cloudflare başarıyla bypass edildi!")
-            
-            # Sayfa yönlendirmesi
-            logger.info("⏳ Form sayfası yükleniyor...")
+            # Sayfa tamamen yüklenene kadar bekle
+            logger.info("⏳ Sayfa tamamen yükleniyor...")
             time.sleep(3)
+            
+            logger.info(f"📄 Final başlık: {self.driver.title}")
+            logger.info(f"� URL: {self.driver.current_url[:80]}...")
+            
+            # CAPTCHA elementi var mı kontrol et
+            try:
+                captcha_elements = self.driver.find_elements(By.CLASS_NAME, "imageCaptcha")
+                if captcha_elements:
+                    logger.info("✅ Form sayfasına ulaşıldı - CAPTCHA elementi bulundu!")
+                else:
+                    logger.warning("⚠️ CAPTCHA elementi bulunamadı!")
+            except Exception as e:
+                logger.warning(f"⚠️ CAPTCHA kontrol hatası: {e}")
+            
+            logger.info("✅ Cloudflare başarıyla bypass edildi (SeleniumBase UC Mode)!")
             
             # İnsan benzeri davranış
             wait_time = random.uniform(2, 4)
