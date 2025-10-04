@@ -54,15 +54,34 @@ class CaptchaSolver:
             return False
         
         try:
-            # Ekran görüntüsü al
-            logger.info("📸 CAPTCHA ekran görüntüsü alınıyor...")
-            screenshot = captcha_element.screenshot_as_png
-            image_size = len(screenshot)
-            logger.info(f"✅ Görüntü alındı ({image_size} bytes)")
+            # Base64 src'yi direkt al (ekran görüntüsü değil)
+            logger.info("📸 CAPTCHA base64 verisi alınıyor (src attribute)...")
+            src = captcha_element.get_attribute("src")
             
-            logger.info("🔄 Base64 kodlaması yapılıyor...")
-            image_base64 = base64.b64encode(screenshot).decode('utf-8')
-            logger.info(f"✅ Base64 kodlama tamamlandı ({len(image_base64)} karakter)")
+            if not src or not src.startswith("data:image"):
+                logger.error("❌ CAPTCHA src attribute'u geçerli base64 formatında değil!")
+                return False
+            
+            # data:image/png;base64,XXXXX formatından base64 kısmını çıkar
+            logger.info("✅ CAPTCHA src formatı doğrulandı")
+            image_base64 = src.split(",", 1)[1]
+            image_size = len(image_base64)
+            logger.info(f"✅ Base64 verisi çıkarıldı ({image_size} karakter)")
+            
+            # Arşiv için kaydet (debugging)
+            try:
+                import os
+                os.makedirs("captcha_images", exist_ok=True)
+                timestamp = int(time.time() * 1000) % 1000000
+                captcha_path = f"captcha_images/captcha_{timestamp:06d}.png"
+                
+                # Base64'ü decode et ve kaydet
+                image_data = base64.b64decode(image_base64)
+                with open(captcha_path, 'wb') as f:
+                    f.write(image_data)
+                logger.info(f"💾 CAPTCHA arşivlendi: {captcha_path}")
+            except Exception as e:
+                logger.warning(f"⚠️ CAPTCHA arşivleme hatası (kritik değil): {e}")
             
             # Mistral'a gönder
             logger.info(f"🤖 Mistral AI Vision API'ye gönderiliyor (model: {self.model})...")
