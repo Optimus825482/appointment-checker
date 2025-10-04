@@ -1,7 +1,6 @@
 flask==3.0.0
-selenium==4.35.0
-undetected-chromedriver==3.5.5
 seleniumbase==4.35.0
+undetected-chromedriver==3.5.5
 mistralai==0.4.2
 python-dotenv==1.0.0
 pillow==10.1.0
