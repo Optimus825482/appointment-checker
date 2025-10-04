@@ -1,11 +1,7 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "pip install -r requirements.txt"
 
 [deploy]
 startCommand = "gunicorn src.app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
-
-[env]
-NIXPACKS_INSTALL_CHROMIUM = "1"
