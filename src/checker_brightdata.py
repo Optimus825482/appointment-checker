@@ -30,13 +30,21 @@ class AppointmentChecker:
         """
         logger.info(f"🌐 Bright Data Unlocker API ile sayfa getiriliyor: {url}")
         
+        # API Key kontrolü
+        api_key = self.config.BRIGHTDATA_API_KEY
+        if not api_key:
+            logger.error("❌ BRIGHTDATA_API_KEY bulunamadı!")
+            return False, "", 0
+        
+        logger.info(f"🔑 API Key (ilk 10 karakter): {api_key[:10]}...")
+        
         # Bright Data Web Unlocker API endpoint
         api_url = "https://api.brightdata.com/request"
         
         # API Headers
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.config.BRIGHTDATA_API_KEY}"
+            "Authorization": f"Bearer {api_key}"
         }
         
         # Request payload (Bright Data format)
@@ -55,7 +63,7 @@ class AppointmentChecker:
                     api_url,
                     json=payload,
                     headers=headers,
-                    timeout=30  # 30 saniye (Railway'de daha hızlı fail)
+                    timeout=20  # 20 saniye (ücretli API hızlı olmalı!)
                 )
                 
                 # Debug logging
