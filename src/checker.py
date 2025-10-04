@@ -206,7 +206,7 @@ class AppointmentChecker:
             self.human_like_behavior()
             
             # CAPTCHA kontrolü
-            from captcha_solver import CaptchaSolver
+            from src.captcha_solver import CaptchaSolver
             solver = CaptchaSolver(self.config.MISTRAL_API_KEY)
             
             if not solver.solve_captcha(self.driver):
