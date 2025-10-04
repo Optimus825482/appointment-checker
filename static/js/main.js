@@ -2,12 +2,15 @@ let isMonitoring = false;
 let statusInterval = null;
 let statsInterval = null;
 
+let detailedLogsInterval = null;
+
 // Sayfa yüklendiğinde
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Uygulama başlatıldı');
     loadStatus();
     loadHistory();
     startStatusPolling();
+    startDetailedLogsPolling(); // Detaylı log polling başlat
 });
 
 // İzlemeyi başlat
@@ -112,6 +115,55 @@ async function checkNow() {
 function startStatusPolling() {
     statusInterval = setInterval(loadStatus, 3000); // 3 saniyede bir
     statsInterval = setInterval(loadHistory, 10000); // 10 saniyede bir
+}
+
+// Detaylı log polling (gerçek zamanlı backend logları)
+function startDetailedLogsPolling() {
+    detailedLogsInterval = setInterval(loadDetailedLogs, 2000); // 2 saniyede bir
+    loadDetailedLogs(); // İlk yüklemeyi hemen yap
+}
+
+// Backend'den detaylı logları yükle
+async function loadDetailedLogs() {
+    try {
+        const response = await fetch('/api/logs/recent');
+        const data = await response.json();
+        
+        if (data.logs && data.logs.length > 0) {
+            const logContainer = document.getElementById('logContainer');
+            
+            // Mevcut logları sakla
+            const currentLogs = Array.from(logContainer.children);
+            const currentCount = currentLogs.length;
+            
+            // Yeni logları ekle (en yeni önce)
+            data.logs.reverse().forEach(log => {
+                const logEntry = document.createElement('div');
+                const typeClass = log.level === 'ERROR' ? 'error' : 
+                                 log.level === 'WARNING' ? 'warning' : 
+                                 log.level === 'SUCCESS' ? 'success' : 'info';
+                
+                logEntry.className = `log-entry ${typeClass}`;
+                logEntry.innerHTML = `
+                    <span class="log-time">${log.timestamp}</span>
+                    <span class="log-message">${log.message}</span>
+                `;
+                
+                // Yeni logu en üste ekle
+                if (currentCount === 0 || logEntry.textContent !== currentLogs[0].textContent) {
+                    logContainer.insertBefore(logEntry, logContainer.firstChild);
+                }
+            });
+            
+            // En fazla 100 log tut
+            while (logContainer.children.length > 100) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+        
+    } catch (error) {
+        console.error('Detaylı log yükleme hatası:', error);
+    }
 }
 
 // Mevcut durumu yükle
@@ -269,4 +321,5 @@ function showToast(message, type = 'info') {
 window.addEventListener('beforeunload', () => {
     if (statusInterval) clearInterval(statusInterval);
     if (statsInterval) clearInterval(statsInterval);
+    if (detailedLogsInterval) clearInterval(detailedLogsInterval);
 });

@@ -8,12 +8,38 @@ from config.settings import Config
 import logging
 import time
 from pathlib import Path
+from collections import deque
+from datetime import datetime
+
+# Memory'de tutulacak log buffer'ı
+log_buffer = deque(maxlen=100)  # Son 100 log mesajı
+
+class MemoryLogHandler(logging.Handler):
+    """Logları memory'de tutan handler"""
+    def emit(self, record):
+        log_entry = {
+            'timestamp': datetime.fromtimestamp(record.created).strftime('%H:%M:%S'),
+            'level': record.levelname,
+            'logger': record.name,
+            'message': self.format(record)
+        }
+        log_buffer.append(log_entry)
 
 # Logging yapılandırması
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(levelname)s:%(name)s:%(message)s'
 )
+
+# Memory handler ekle
+memory_handler = MemoryLogHandler()
+memory_handler.setFormatter(logging.Formatter('%(message)s'))
+
+# Tüm logger'lara memory handler ekle
+logging.getLogger('src.checker').addHandler(memory_handler)
+logging.getLogger('src.captcha_solver').addHandler(memory_handler)
+logging.getLogger('src.app').addHandler(memory_handler)
+
 logger = logging.getLogger(__name__)
 
 # Proje root dizinini bul
@@ -164,6 +190,27 @@ def get_history():
         })
     
     return jsonify(history)
+
+@app.route('/api/logs/recent')
+def get_recent_logs():
+    """Son logları getir (gerçek zamanlı detaylı loglar)"""
+    try:
+        # Memory buffer'daki logları JSON olarak döndür
+        return jsonify({
+            'logs': list(log_buffer),
+            'count': len(log_buffer)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/logs/clear', methods=['POST'])
+def clear_logs():
+    """Log buffer'ını temizle"""
+    try:
+        log_buffer.clear()
+        return jsonify({'status': 'cleared'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/check-now', methods=['POST'])
 def check_now():
