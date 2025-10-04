@@ -322,38 +322,10 @@ def check_now():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Uygulama başladığında otomatik izlemeyi başlat (Railway için)
-def auto_start_monitoring():
-    """Railway deployment sonrası otomatik başlat"""
-    global monitoring_active
-    
-    if not monitoring_active:
-        try:
-            logger.info("🤖 Otomatik izleme başlatılıyor (Railway auto-start)...")
-            
-            if not scheduler.running:
-                scheduler.start()
-            
-            # Job ekle
-            scheduler.add_job(
-                scheduled_check,
-                'interval',
-                seconds=Config.CHECK_INTERVAL,
-                id='appointment_check',
-                replace_existing=True
-            )
-            
-            monitoring_active = True
-            logger.info(f"✅ Otomatik izleme başladı (interval: {Config.CHECK_INTERVAL}s)")
-            
-            # İlk kontrolü hemen yap
-            scheduled_check()
-            
-        except Exception as e:
-            logger.error(f"❌ Otomatik başlatma hatası: {e}")
-
-# Otomatik başlatmayı çağır (Gunicorn başladığında)
-auto_start_monitoring()
+# Scheduler'ı başlat (ama job eklemeden)
+if not scheduler.running:
+    scheduler.start()
+    logger.info("📅 Scheduler hazır (manuel başlatma bekleniyor)")
 
 if __name__ == '__main__':
     port = Config.PORT
