@@ -58,7 +58,23 @@ class AppointmentChecker:
                     timeout=90  # API timeout
                 )
                 
+                # Debug logging
+                logger.info(f"📡 Response Status: {response.status_code}")
+                logger.info(f"📡 Response Headers: {dict(response.headers)}")
+                logger.info(f"📡 Response Content-Type: {response.headers.get('Content-Type', 'N/A')}")
+                logger.info(f"📡 Response Length: {len(response.content)} bytes")
+                logger.info(f"📡 Response Text Length: {len(response.text)} chars")
+                
+                if len(response.text) > 0:
+                    logger.info(f"📡 Response Preview (first 500 chars): {response.text[:500]}")
+                
                 if response.status_code == 200:
+                    if len(response.text) == 0:
+                        logger.error("❌ Response boş! API yanıt veriyor ama içerik yok")
+                        logger.error(f"💡 Full Response: {response.content}")
+                        logger.error(f"💡 Request Payload: {payload}")
+                        return False, "", response.status_code
+                    
                     logger.info(f"✅ Sayfa başarıyla getirildi! (Status: {response.status_code})")
                     logger.info(f"📊 Response boyutu: {len(response.text)} karakter")
                     return True, response.text, response.status_code
