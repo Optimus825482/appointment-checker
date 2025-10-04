@@ -7,6 +7,7 @@ from src.database import Database
 from config.settings import Config
 import logging
 import time
+from pathlib import Path
 
 # Logging yapılandırması
 logging.basicConfig(
@@ -15,7 +16,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
+# Proje root dizinini bul
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Flask app'i root dizinindeki templates ve static ile oluştur
+app = Flask(__name__,
+            template_folder=str(BASE_DIR / 'templates'),
+            static_folder=str(BASE_DIR / 'static'))
 CORS(app)
 app.config.from_object(Config)
 
