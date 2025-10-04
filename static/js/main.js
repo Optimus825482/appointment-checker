@@ -195,6 +195,15 @@ async function loadStatus() {
         document.getElementById('lastResult').textContent = data.last_check_status;
         document.getElementById('checkInterval').textContent = data.check_interval;
         
+        // CAPTCHA görselini göster
+        if (data.captcha_image) {
+            document.getElementById('captchaCard').style.display = 'block';
+            document.getElementById('captchaImage').src = data.captcha_image;
+            document.getElementById('captchaText').textContent = data.captcha_text || '-';
+        } else {
+            document.getElementById('captchaCard').style.display = 'none';
+        }
+        
         updateUIState(data.monitoring_active);
         
     } catch (error) {

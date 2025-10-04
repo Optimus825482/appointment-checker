@@ -62,10 +62,12 @@ scheduler = BackgroundScheduler()
 monitoring_active = False
 last_check_time = None
 last_check_status = "Henüz kontrol yapılmadı"
+last_captcha_image = None  # Son CAPTCHA görseli (base64)
+last_captcha_text = None   # Son çözülen CAPTCHA metni
 
 def scheduled_check():
     """Zamanlanmış kontrol"""
-    global last_check_time, last_check_status
+    global last_check_time, last_check_status, last_captcha_image, last_captcha_text
     
     try:
         logger.info("⏰ Zamanlanmış kontrol başladı")
@@ -74,19 +76,35 @@ def scheduled_check():
         
         result = checker.run_check()
         
-        if result:
-            last_check_status = "🎉 RANDEVU BULUNDU!"
-            notifier.notify_appointment_found()
-            db.log_check("success", appointment_found=True)
+        # CAPTCHA bilgilerini kaydet
+        if isinstance(result, dict):
+            last_check_status = result.get('status', 'Bilinmeyen durum')
+            last_captcha_image = result.get('captcha_image')
+            last_captcha_text = result.get('captcha_text')
             
-            # Randevu bulununca izlemeyi durdur
-            global monitoring_active
-            monitoring_active = False
-            scheduler.pause()
-            
+            # Randevu kontrolü
+            if "RANDEVU VAR" in last_check_status:
+                notifier.notify_appointment_found()
+                db.log_check("success", appointment_found=True)
+                
+                # Randevu bulununca izlemeyi durdur
+                global monitoring_active
+                monitoring_active = False
+                scheduler.pause()
+            else:
+                db.log_check("success", appointment_found=False)
         else:
-            last_check_status = "😔 Randevu yok"
-            db.log_check("success", appointment_found=False)
+            # Eski format (string)
+            last_check_status = str(result)
+            if result:
+                notifier.notify_appointment_found()
+                db.log_check("success", appointment_found=True)
+                
+                global monitoring_active
+                monitoring_active = False
+                scheduler.pause()
+            else:
+                db.log_check("success", appointment_found=False)
         
         logger.info(f"✅ Kontrol tamamlandı: {last_check_status}")
         
@@ -179,7 +197,9 @@ def get_status():
         'monitoring_active': monitoring_active,
         'last_check_time': last_check_time,
         'last_check_status': last_check_status,
-        'check_interval': Config.CHECK_INTERVAL
+        'check_interval': Config.CHECK_INTERVAL,
+        'captcha_image': last_captcha_image,
+        'captcha_text': last_captcha_text
     })
 
 @app.route('/api/history')

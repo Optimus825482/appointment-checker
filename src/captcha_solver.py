@@ -29,7 +29,7 @@ class CaptchaSolver:
                     "content": [
                         {
                             "type": "text",
-                            "text": "Bu CAPTCHA goruntusu 6 karakterli metni oku. Sadece buyuk harflerle karakterleri ver, baska aciklama yapma."
+                            "text": "This image contains a 6-digit numeric CAPTCHA code. Read ONLY the 6 numbers from left to right. Return ONLY the 6 digits, nothing else. No letters, no spaces, no explanations. Example format: 123456"
                         },
                         {
                             "type": "image_url",

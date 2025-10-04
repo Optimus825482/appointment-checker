@@ -302,7 +302,20 @@ class AppointmentChecker:
     def run_check(self):
         """
         Ana kontrol döngüsü - Bright Data Unlocker API ile
+        
+        Returns:
+            dict: {
+                'status': str,  # Sonuç mesajı
+                'captcha_image': str or None,  # Base64 CAPTCHA görseli
+                'captcha_text': str or None    # Çözülen CAPTCHA metni
+            }
         """
+        result = {
+            'status': "Kontrol başlatılıyor...",
+            'captcha_image': None,
+            'captcha_text': None
+        }
+        
         try:
             logger.info("🚀 Kontrol başlatılıyor...")
             logger.info("🌐 Bright Data Unlocker API kullanılıyor (Selenium YOK!)")
@@ -312,13 +325,15 @@ class AppointmentChecker:
             
             if not success:
                 logger.error("❌ Sayfa getirilemedi!")
-                return "❌ Bağlantı hatası"
+                result['status'] = "❌ Bağlantı hatası"
+                return result
             
             # 2. Cloudflare kontrolü
             if "cloudflare" in html.lower() or "attention required" in html.lower():
                 logger.error("❌ Bright Data bile Cloudflare'ı geçemedi!")
                 logger.error("💡 Bu çok nadir bir durum, API key'i kontrol edin")
-                return "❌ Cloudflare bypass başarısız"
+                result['status'] = "❌ Cloudflare bypass başarısız"
+                return result
             
             logger.info("✅ Cloudflare başarıyla bypass edildi!")
             logger.info(f"📄 HTML boyutu: {len(html)} karakter")
@@ -329,6 +344,9 @@ class AppointmentChecker:
             if captcha_data:
                 logger.info("🔐 CAPTCHA bulundu, Mistral AI ile çözülüyor...")
                 
+                # CAPTCHA görselini kaydet
+                result['captcha_image'] = captcha_data
+                
                 from src.captcha_solver import CaptchaSolver
                 solver = CaptchaSolver(self.config.MISTRAL_API_KEY)
                 
@@ -337,6 +355,9 @@ class AppointmentChecker:
                 
                 if captcha_text:
                     logger.info(f"✅ CAPTCHA çözüldü: {captcha_text}")
+                    
+                    # CAPTCHA metnini kaydet
+                    result['captcha_text'] = captcha_text
                     
                     # CAPTCHA kodunu POST et
                     logger.info("📤 CAPTCHA kodu POST ediliyor...")
@@ -356,13 +377,15 @@ class AppointmentChecker:
             available, message = self.check_appointment_availability(html)
             
             logger.info(f"📊 Sonuç: {message}")
-            return message
+            result['status'] = message
+            return result
             
         except Exception as e:
             logger.error(f"❌ Kritik hata: {e}")
             import traceback
             logger.error(traceback.format_exc())
-            return f"❌ Hata: {e}"
+            result['status'] = f"❌ Hata: {e}"
+            return result
         
         finally:
             logger.info("🔚 Kontrol tamamlandı")
