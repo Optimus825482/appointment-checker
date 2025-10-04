@@ -42,8 +42,8 @@ COPY . .
 ENV CHROME_BIN=/usr/bin/chromium
 ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
 
-# Port
-EXPOSE 5000
+# Port (Railway otomatik set eder)
+ENV PORT=5000
 
-# Başlatma komutu
-CMD ["gunicorn", "src.app:app", "--bind", "0.0.0.0:5000", "--timeout", "120", "--workers", "1", "--log-level", "info"]
+# Başlatma komutu - PORT değişkeni shell ile çözümlenir
+CMD gunicorn src.app:app --bind 0.0.0.0:${PORT} --timeout 120 --workers 1 --log-level info
