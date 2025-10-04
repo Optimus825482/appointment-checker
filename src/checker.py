@@ -242,12 +242,17 @@ class AppointmentChecker:
             self.driver.get(self.config.APPOINTMENT_URL)
             logger.info("✅ Sayfa yükleme başlatıldı")
             
-            # Cloudflare'i geç
-            logger.info("🛡️ Cloudflare bypass işlemi başlıyor...")
+            # Cloudflare'i geç (Sayfa 1)
+            logger.info("🛡️ Cloudflare bypass işlemi başlıyor (Sayfa 1)...")
             if not self.wait_for_cloudflare():
                 logger.error("❌ Cloudflare geçilemedi!")
                 return False
             logger.info("✅ Cloudflare başarıyla bypass edildi!")
+            
+            # Sayfa 2'nin yüklenmesini bekle
+            logger.info("⏳ İkinci sayfa (form sayfası) yüklenmesi bekleniyor...")
+            time.sleep(3)
+            logger.info("✅ İkinci sayfa yüklenmiş olmalı")
             
             # İnsan benzeri davranış
             wait_time = random.uniform(2, 4)
@@ -256,11 +261,19 @@ class AppointmentChecker:
             self.human_like_behavior()
             logger.info("✅ İnsan benzeri hareketler tamamlandı")
             
-            # CAPTCHA kontrolü
+            # CAPTCHA kontrolü (Sayfa 2'de)
             logger.info("🔐 CAPTCHA çözme modülü başlatılıyor...")
+            logger.info(f"📄 Şu anki sayfa URL'si: {self.driver.current_url}")
+            logger.info(f"📄 Sayfa başlığı: {self.driver.title}")
+            
+            # Sayfayı aşağı scroll et (CAPTCHA görünür hale gelsin)
+            logger.info("📜 Sayfa aşağı kaydırılıyor (CAPTCHA'nın görünür olması için)...")
+            self.driver.execute_script("window.scrollTo(0, 300);")
+            time.sleep(1)
+            
             from src.captcha_solver import CaptchaSolver
             solver = CaptchaSolver(self.config.MISTRAL_API_KEY)
-            logger.info("🎯 CAPTCHA tespit ve çözüm süreci başlıyor...")
+            logger.info("🎯 CAPTCHA tespit ve çözüm süreci başlıyor (Sayfa 2)...")
             
             if not solver.solve_captcha(self.driver):
                 logger.error("❌ CAPTCHA çözülemedi!")
