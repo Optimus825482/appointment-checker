@@ -19,7 +19,7 @@ class AppointmentChecker:
         
     def setup_driver(self):
         """Railway için optimize edilmiş driver ayarları"""
-        options = Options()
+        options = uc.ChromeOptions()
         
         # Headless mod (Railway için zorunlu)
         options.add_argument('--headless=new')
@@ -31,8 +31,6 @@ class AppointmentChecker:
         
         # Bot tespitini engelle
         options.add_argument('--disable-blink-features=AutomationControlled')
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option('useAutomationExtension', False)
         
         # Rastgele pencere boyutu
         width = random.randint(1200, 1600)
@@ -46,11 +44,11 @@ class AppointmentChecker:
         options.binary_location = self.config.CHROME_BIN
         
         try:
-            # Undetected ChromeDriver ile başlat
+            # Undetected ChromeDriver ile başlat - use_subprocess=False önemli!
             self.driver = uc.Chrome(
                 options=options,
                 driver_executable_path=self.config.CHROMEDRIVER_PATH,
-                version_main=120
+                use_subprocess=False
             )
             
             # Bot tespitini engelleme scriptleri
