@@ -1,4 +1,4 @@
-from mistralai.client import MistralClient
+from mistralai import Mistral
 import logging
 
 logger = logging.getLogger(__name__)
@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 class CaptchaSolver:
     def __init__(self, api_key):
         self.api_key = api_key
-        self.client = MistralClient(api_key=api_key) if api_key else None
+        self.client = Mistral(api_key=api_key) if api_key else None
         self.model = "pixtral-12b-2409"
     
     def solve_captcha_from_base64(self, base64_data):
@@ -40,7 +40,7 @@ class CaptchaSolver:
             ]
             
             logger.info("Mistral AI yaniti bekleniyor...")
-            response = self.client.chat(
+            response = self.client.chat.complete(
                 model=self.model,
                 messages=messages,
                 temperature=0.1

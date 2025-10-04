@@ -302,21 +302,51 @@ class AppointmentChecker:
             # Form sayfasındaki select option'ları parse et
             soup = BeautifulSoup(form_html, 'html.parser')
             
-            # 1. Şehir seçimi için option değerlerini al
-            city_select = soup.find('select', {'id': 'city_id'})
+            # 1. Şehir seçimi için option değerlerini al (dinamik bekleme ile)
             izmir_option = None
+            max_retries = 3  # Maksimum 3 deneme
             
-            if city_select:
-                logger.info("🏙️ Şehir seçimi bulundu, İzmir aranıyor...")
-                options = city_select.find_all('option')
-                for option in options:
-                    if 'izmir' in option.get_text().lower():
-                        izmir_option = option.get('value')
-                        logger.info(f"✅ İzmir bulundu: value={izmir_option}")
-                        break
+            for attempt in range(1, max_retries + 1):
+                logger.info(f"🏙️ Şehir seçenekleri kontrol ediliyor (Deneme {attempt}/{max_retries})...")
+                
+                # HTML'i yeniden parse et (her denemede)
+                soup = BeautifulSoup(form_html, 'html.parser')
+                city_select = soup.find('select', {'id': 'city_id'})
+                
+                if city_select:
+                    options = city_select.find_all('option')
+                    logger.info(f"📊 {len(options)} şehir seçeneği bulundu")
+                    
+                    # İzmir'i ara
+                    for option in options:
+                        option_text = option.get_text().strip().lower()
+                        if 'izmir' in option_text and option.get('value'):
+                            izmir_option = option.get('value')
+                            logger.info(f"✅ İzmir bulundu: value={izmir_option}, text={option.get_text().strip()}")
+                            break
+                    
+                    if izmir_option:
+                        break  # İzmir bulundu, döngüden çık
+                    else:
+                        logger.warning(f"⚠️ İzmir bulunamadı, 2 saniye bekleniyor...")
+                        if attempt < max_retries:
+                            time.sleep(2)
+                            # Sayfayı yeniden getir
+                            logger.info("🔄 Sayfa yeniden getiriliyor...")
+                            _, form_html, _ = self.fetch_with_brightdata(self.config.APPOINTMENT_URL)
+                else:
+                    logger.warning(f"⚠️ city_id select elementi bulunamadı, 2 saniye bekleniyor...")
+                    if attempt < max_retries:
+                        time.sleep(2)
+                        # Sayfayı yeniden getir
+                        _, form_html, _ = self.fetch_with_brightdata(self.config.APPOINTMENT_URL)
             
             if not izmir_option:
-                logger.warning("⚠️ İzmir seçeneği bulunamadı!")
+                logger.error("❌ İzmir seçeneği bulunamadı (3 deneme sonrası)!")
+                logger.info("📋 Bulunan seçenekler:")
+                if city_select:
+                    for opt in city_select.find_all('option'):
+                        logger.info(f"   - value={opt.get('value')}, text={opt.get_text().strip()}")
                 return False, None
             
             # 2. İlk POST: Şehir seçimi (İzmir)
@@ -343,24 +373,46 @@ class AppointmentChecker:
                 return False, None
             
             logger.info("✅ İzmir seçildi, ofis seçenekleri yükleniyor...")
-            time.sleep(2)  # Server'ın yüklenmesini bekle
+            time.sleep(3)  # Server'ın ofis seçeneklerini yüklemesini bekle
             
-            # 3. İkinci GET: Ofis seçeneklerini al
-            office_soup = BeautifulSoup(response.text, 'html.parser')
-            office_select = office_soup.find('select', {'id': 'office_id'})
+            # 3. İkinci GET: Ofis seçeneklerini al (dinamik bekleme ile)
             izmir_office = None
             
-            if office_select:
-                logger.info("🏢 Ofis seçimi bulundu, İzmir Ofisi aranıyor...")
-                options = office_select.find_all('option')
-                for option in options:
-                    if 'izmir' in option.get_text().lower():
-                        izmir_office = option.get('value')
-                        logger.info(f"✅ İzmir Ofisi bulundu: value={izmir_office}")
-                        break
+            for attempt in range(1, max_retries + 1):
+                logger.info(f"🏢 Ofis seçenekleri kontrol ediliyor (Deneme {attempt}/{max_retries})...")
+                
+                office_soup = BeautifulSoup(response.text, 'html.parser')
+                office_select = office_soup.find('select', {'id': 'office_id'})
+                
+                if office_select:
+                    options = office_select.find_all('option')
+                    logger.info(f"📊 {len(options)} ofis seçeneği bulundu")
+                    
+                    # İzmir Ofisi'ni ara
+                    for option in options:
+                        option_text = option.get_text().strip().lower()
+                        if 'izmir' in option_text and option.get('value'):
+                            izmir_office = option.get('value')
+                            logger.info(f"✅ İzmir Ofisi bulundu: value={izmir_office}, text={option.get_text().strip()}")
+                            break
+                    
+                    if izmir_office:
+                        break  # İzmir Ofisi bulundu
+                    else:
+                        logger.warning(f"⚠️ İzmir Ofisi bulunamadı, 2 saniye bekleniyor...")
+                        if attempt < max_retries:
+                            time.sleep(2)
+                else:
+                    logger.warning(f"⚠️ office_id select elementi bulunamadı, 2 saniye bekleniyor...")
+                    if attempt < max_retries:
+                        time.sleep(2)
             
             if not izmir_office:
-                logger.warning("⚠️ İzmir Ofisi bulunamadı!")
+                logger.error("❌ İzmir Ofisi bulunamadı (3 deneme sonrası)!")
+                logger.info("📋 Bulunan ofis seçenekleri:")
+                if office_select:
+                    for opt in office_select.find_all('option'):
+                        logger.info(f"   - value={opt.get('value')}, text={opt.get_text().strip()}")
                 return False, None
             
             # 4. İkinci POST: Ofis seçimi
