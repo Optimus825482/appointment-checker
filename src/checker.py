@@ -249,10 +249,29 @@ class AppointmentChecker:
                 return False
             logger.info("✅ Cloudflare başarıyla bypass edildi!")
             
-            # Sayfa 2'nin yüklenmesini bekle
-            logger.info("⏳ İkinci sayfa (form sayfası) yüklenmesi bekleniyor...")
+            # Sayfa yönlendirmesini bekle (Cloudflare → Form sayfası)
+            logger.info("⏳ Sayfa yönlendirmesi bekleniyor...")
+            max_wait = 15
+            start_time = time.time()
+            
+            while time.time() - start_time < max_wait:
+                current_title = self.driver.title
+                current_url = self.driver.current_url
+                
+                logger.info(f"🔍 Kontrol: Başlık='{current_title}', URL='{current_url[:60]}...'")
+                
+                # Cloudflare başlığından kurtulduk mu?
+                if "cloudflare" not in current_title.lower():
+                    logger.info(f"✅ Form sayfasına yönlendirildi! Başlık: {current_title}")
+                    break
+                
+                time.sleep(2)
+            else:
+                logger.warning("⚠️ Form sayfasına yönlendirilmedi, devam ediliyor...")
+            
+            # Ekstra bekleme
+            logger.info("⏳ Sayfa tamamen yüklenmesi için bekleniyor (3 saniye)...")
             time.sleep(3)
-            logger.info("✅ İkinci sayfa yüklenmiş olmalı")
             
             # İnsan benzeri davranış
             wait_time = random.uniform(2, 4)
