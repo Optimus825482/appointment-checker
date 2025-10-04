@@ -130,16 +130,34 @@ class AppointmentChecker:
             str: CAPTCHA base64 data URL veya None
         """
         try:
-            soup = BeautifulSoup(html, 'html.parser')
+            # Use lxml parser for better performance
+            soup = BeautifulSoup(html, 'lxml')
+            
+            logger.info("🔍 CAPTCHA görseli aranıyor...")
+            logger.info(f"📊 HTML boyutu: {len(html)} karakter")
             
             # CAPTCHA görseli ara
             captcha_img = soup.find('img', class_='imageCaptcha')
             
-            if captcha_img and captcha_img.get('src'):
-                src = captcha_img['src']
-                if src.startswith('data:image'):
+            if captcha_img:
+                logger.info("✅ img.imageCaptcha elementi bulundu!")
+                src = captcha_img.get('src', '')
+                logger.info(f"📡 src attribute: {src[:100]}...")
+                
+                if src and src.startswith('data:image'):
                     logger.info("✅ CAPTCHA görseli HTML'de bulundu!")
+                    logger.info(f"📊 Base64 boyutu: {len(src)} karakter")
                     return src
+                else:
+                    logger.warning(f"⚠️ src attribute geçersiz: {src[:50]}")
+            else:
+                logger.warning("⚠️ img.imageCaptcha elementi bulunamadı")
+                
+                # Debug: Tüm img elementlerini listele
+                all_imgs = soup.find_all('img')
+                logger.info(f"📊 Toplam img elementi: {len(all_imgs)}")
+                for idx, img in enumerate(all_imgs[:5]):  # İlk 5'i göster
+                    logger.info(f"   img[{idx}]: class={img.get('class', [])} src={str(img.get('src', ''))[:50]}...")
                     
             logger.warning("⚠️ CAPTCHA görseli HTML'de bulunamadı")
             return None
