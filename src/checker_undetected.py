@@ -22,7 +22,7 @@ class CheckerConfig:
     """Configuration for the appointment checker"""
     MISTRAL_API_KEY: str
     TARGET_URL: str = "https://it-tr-appointment.idata.com.tr/tr"
-    HEADLESS: bool = True  # Railway için True, lokal test için False
+    # NOT: HEADLESS artık kullanılmıyor - Railway/Docker Xvfb (virtual display) kullanıyor
 
 
 class UndetectedChecker:
@@ -51,12 +51,14 @@ class UndetectedChecker:
         options.add_argument(f'--user-data-dir={chrome_profile}')
         options.add_argument("--disable-blink-features=AutomationControlled")
         
-        # Railway için headless mode (Production'da)
-        if self.config.HEADLESS:
-            options.add_argument('--headless=new')
-            options.add_argument('--disable-gpu')
-            options.add_argument('--no-sandbox')
-            options.add_argument('--disable-dev-shm-usage')
+        # Railway/Docker için (Xvfb kullanıyoruz - headless gerekmez!)
+        # Sadece Docker environment için gerekli ayarlar
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')  # Docker'da GPU yok
+        
+        # NOT: --headless kullanmıyoruz! Xvfb virtual display sağlıyor
+        # Bu sayede Cloudflare headless detection'ı atlatıyoruz
         
         return options
     
@@ -258,8 +260,9 @@ if __name__ == "__main__":
     
     # Test config
     config = CheckerConfig(
-        MISTRAL_API_KEY=os.getenv("MISTRAL_API_KEY", ""),
-        HEADLESS=False  # Lokal test için görüntülü mod
+        MISTRAL_API_KEY=os.getenv("MISTRAL_API_KEY", "")
+        # NOT: Lokal testte görüntülü mod otomatik (DISPLAY yok ise)
+        # Railway'de Xvfb virtual display sağlıyor
     )
     
     checker = UndetectedChecker(config)

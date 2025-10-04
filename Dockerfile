@@ -31,11 +31,21 @@ RUN apt-get update && apt-get install -y \
     libxkbcommon0 \
     libxrandr2 \
     xdg-utils \
+    xvfb \
+    x11vnc \
+    fluxbox \
     && wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - \
     && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
     && apt-get update \
     && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
+
+# Xvfb başlatma scripti oluştur
+RUN echo '#!/bin/bash\n\
+Xvfb :99 -screen 0 1280x720x24 -ac +extension GLX +render -noreset &\n\
+export DISPLAY=:99\n\
+exec "$@"' > /usr/local/bin/xvfb-run.sh && \
+    chmod +x /usr/local/bin/xvfb-run.sh
 
 # Çalışma dizini
 WORKDIR /app
@@ -51,10 +61,11 @@ COPY . .
 # Chrome profil dizini oluştur
 RUN mkdir -p /app/chrome_profile && chmod 777 /app/chrome_profile
 
-# Port ayarı
+# Port ve Display ayarları
 ENV PORT=5000
+ENV DISPLAY=:99
 
 EXPOSE 5000
 
-# Gunicorn ile başlat - undetected-chromedriver + Mistral AI
-CMD ["gunicorn", "src.app:app", "--bind", "0.0.0.0:5000", "--timeout", "180", "--workers", "1", "--log-level", "info"]
+# Xvfb ile başlat (Virtual Display - headless gerekmez!)
+CMD ["/usr/local/bin/xvfb-run.sh", "gunicorn", "src.app:app", "--bind", "0.0.0.0:5000", "--timeout", "180", "--workers", "1", "--log-level", "info"]
