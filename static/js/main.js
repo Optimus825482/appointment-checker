@@ -170,21 +170,23 @@ async function updateProgress() {
 function setProgress(step, message) {
     // Progress bar güncelle
     const progressBar = document.getElementById('progressBar');
-    const percentage = (step / 6) * 100;
+    const percentage = (step / 7) * 100;
     progressBar.style.width = `${percentage}%`;
     
     // Message güncelle
     document.getElementById('progressMessage').textContent = message;
     
     // Step'leri güncelle
-    for (let i = 1; i <= 6; i++) {
+    for (let i = 1; i <= 7; i++) {
         const stepEl = document.getElementById(`step${i}`);
-        stepEl.classList.remove('active', 'completed');
-        
-        if (i < step) {
-            stepEl.classList.add('completed');
-        } else if (i === step) {
-            stepEl.classList.add('active');
+        if (stepEl) {
+            stepEl.classList.remove('active', 'completed');
+            
+            if (i < step) {
+                stepEl.classList.add('completed');
+            } else if (i === step) {
+                stepEl.classList.add('active');
+            }
         }
     }
 }

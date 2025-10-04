@@ -279,6 +279,189 @@ class AppointmentChecker:
             logger.error(f"❌ CAPTCHA POST hatası: {e}")
             return False, None
     
+    def fill_appointment_form(self, form_html):
+        """
+        Form sayfasını doldur ve randevu kontrolü yap
+        
+        İzmir seçenekleri:
+        - Şehir: İzmir
+        - Ofis: İzmir Ofisi
+        - Gidiş Amacı: Turistik
+        - Hizmet Türü: Standart
+        - Kişi Sayısı: 1
+        
+        Args:
+            form_html: Form sayfasının HTML içeriği
+            
+        Returns:
+            tuple: (success: bool, result_html: str or None)
+        """
+        try:
+            logger.info("📝 Form doldurma başlatılıyor...")
+            
+            # Form sayfasındaki select option'ları parse et
+            soup = BeautifulSoup(form_html, 'html.parser')
+            
+            # 1. Şehir seçimi için option değerlerini al
+            city_select = soup.find('select', {'id': 'city_id'})
+            izmir_option = None
+            
+            if city_select:
+                logger.info("🏙️ Şehir seçimi bulundu, İzmir aranıyor...")
+                options = city_select.find_all('option')
+                for option in options:
+                    if 'izmir' in option.get_text().lower():
+                        izmir_option = option.get('value')
+                        logger.info(f"✅ İzmir bulundu: value={izmir_option}")
+                        break
+            
+            if not izmir_option:
+                logger.warning("⚠️ İzmir seçeneği bulunamadı!")
+                return False, None
+            
+            # 2. İlk POST: Şehir seçimi (İzmir)
+            logger.info("📤 POST 1/4: Şehir seçimi (İzmir)...")
+            city_payload = {
+                "zone": "web_unlocker1",
+                "url": self.config.APPOINTMENT_URL,
+                "format": "raw",
+                "country": "tr",
+                "method": "POST",
+                "body": f"city_id={izmir_option}"
+            }
+            
+            api_url = "https://api.brightdata.com/request"
+            headers = {
+                "Authorization": f"Bearer {self.config.BRIGHTDATA_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            
+            response = requests.post(api_url, json=city_payload, headers=headers, timeout=90)
+            
+            if response.status_code != 200:
+                logger.error(f"❌ Şehir seçimi başarısız: {response.status_code}")
+                return False, None
+            
+            logger.info("✅ İzmir seçildi, ofis seçenekleri yükleniyor...")
+            time.sleep(2)  # Server'ın yüklenmesini bekle
+            
+            # 3. İkinci GET: Ofis seçeneklerini al
+            office_soup = BeautifulSoup(response.text, 'html.parser')
+            office_select = office_soup.find('select', {'id': 'office_id'})
+            izmir_office = None
+            
+            if office_select:
+                logger.info("🏢 Ofis seçimi bulundu, İzmir Ofisi aranıyor...")
+                options = office_select.find_all('option')
+                for option in options:
+                    if 'izmir' in option.get_text().lower():
+                        izmir_office = option.get('value')
+                        logger.info(f"✅ İzmir Ofisi bulundu: value={izmir_office}")
+                        break
+            
+            if not izmir_office:
+                logger.warning("⚠️ İzmir Ofisi bulunamadı!")
+                return False, None
+            
+            # 4. İkinci POST: Ofis seçimi
+            logger.info("📤 POST 2/4: Ofis seçimi (İzmir Ofisi)...")
+            office_payload = {
+                "zone": "web_unlocker1",
+                "url": self.config.APPOINTMENT_URL,
+                "format": "raw",
+                "country": "tr",
+                "method": "POST",
+                "body": f"city_id={izmir_option}&office_id={izmir_office}"
+            }
+            
+            response = requests.post(api_url, json=office_payload, headers=headers, timeout=90)
+            
+            if response.status_code != 200:
+                logger.error(f"❌ Ofis seçimi başarısız: {response.status_code}")
+                return False, None
+            
+            logger.info("✅ İzmir Ofisi seçildi, vize tipleri yükleniyor...")
+            time.sleep(2)
+            
+            # 5. Üçüncü GET: Vize tipi ve hizmet türü seçeneklerini al
+            visa_soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Gidiş amacı (purpose)
+            purpose_select = visa_soup.find('select', {'id': 'visa_purpose_id'})
+            tourist_purpose = None
+            
+            if purpose_select:
+                logger.info("🎯 Gidiş amacı bulundu, Turistik aranıyor...")
+                options = purpose_select.find_all('option')
+                for option in options:
+                    if 'turist' in option.get_text().lower():
+                        tourist_purpose = option.get('value')
+                        logger.info(f"✅ Turistik bulundu: value={tourist_purpose}")
+                        break
+            
+            # Hizmet türü (service type)
+            service_select = visa_soup.find('select', {'id': 'service_type_id'})
+            standard_service = None
+            
+            if service_select:
+                logger.info("🛠️ Hizmet türü bulundu, Standart aranıyor...")
+                options = service_select.find_all('option')
+                for option in options:
+                    if 'standart' in option.get_text().lower() or 'standard' in option.get_text().lower():
+                        standard_service = option.get('value')
+                        logger.info(f"✅ Standart bulundu: value={standard_service}")
+                        break
+            
+            if not tourist_purpose or not standard_service:
+                logger.warning("⚠️ Vize tipi veya hizmet türü bulunamadı!")
+                return False, None
+            
+            # 6. Üçüncü POST: Vize tipi ve hizmet türü seçimi
+            logger.info("📤 POST 3/4: Turistik + Standart seçimi...")
+            visa_payload = {
+                "zone": "web_unlocker1",
+                "url": self.config.APPOINTMENT_URL,
+                "format": "raw",
+                "country": "tr",
+                "method": "POST",
+                "body": f"city_id={izmir_option}&office_id={izmir_office}&visa_purpose_id={tourist_purpose}&service_type_id={standard_service}"
+            }
+            
+            response = requests.post(api_url, json=visa_payload, headers=headers, timeout=90)
+            
+            if response.status_code != 200:
+                logger.error(f"❌ Vize tipi seçimi başarısız: {response.status_code}")
+                return False, None
+            
+            logger.info("✅ Turistik + Standart seçildi, kişi sayısı ayarlanıyor...")
+            time.sleep(2)
+            
+            # 7. Dördüncü POST: Kişi sayısı (1 kişi)
+            logger.info("📤 POST 4/4: Kişi sayısı (1 kişi)...")
+            count_payload = {
+                "zone": "web_unlocker1",
+                "url": self.config.APPOINTMENT_URL,
+                "format": "raw",
+                "country": "tr",
+                "method": "POST",
+                "body": f"city_id={izmir_option}&office_id={izmir_office}&visa_purpose_id={tourist_purpose}&service_type_id={standard_service}&applicant_count=1"
+            }
+            
+            response = requests.post(api_url, json=count_payload, headers=headers, timeout=90)
+            
+            if response.status_code != 200:
+                logger.error(f"❌ Kişi sayısı ayarı başarısız: {response.status_code}")
+                return False, None
+            
+            logger.info("✅ Form doldurma tamamlandı!")
+            logger.info("📊 Son sayfa HTML boyutu: {} karakter".format(len(response.text)))
+            
+            return True, response.text
+            
+        except Exception as e:
+            logger.error(f"❌ Form doldurma hatası: {e}")
+            return False, None
+    
     def check_appointment_availability(self, html):
         """
         HTML'den randevu durumunu kontrol et
@@ -423,6 +606,17 @@ class AppointmentChecker:
                     if success and form_html:
                         logger.info("✅ CAPTCHA POST başarılı, form sayfası alındı!")
                         html = form_html  # Yeni HTML'i kullan
+                        
+                        # Form doldurma adımı ekle
+                        update_progress(5, "Form doldurma (İzmir/Turistik/Standart/1 kişi)...")
+                        logger.info("📝 Form doldurma başlatılıyor...")
+                        form_success, final_html = self.fill_appointment_form(form_html)
+                        
+                        if form_success and final_html:
+                            logger.info("✅ Form başarıyla dolduruldu!")
+                            html = final_html  # Son HTML'i kullan
+                        else:
+                            logger.warning("⚠️ Form doldurulamadı, mevcut HTML kullanılacak")
                     else:
                         logger.warning("⚠️ CAPTCHA POST başarısız, ilk sayfadaki HTML kullanılacak")
                 else:
@@ -431,11 +625,11 @@ class AppointmentChecker:
                 logger.info("ℹ️ CAPTCHA bulunamadı veya gerekli değil")
             
             # 4. Randevu durumunu kontrol et
-            update_progress(5, "Form sayfası yükleniyor...")
+            update_progress(6, "Randevu durumu kontrol ediliyor...")
             available, message = self.check_appointment_availability(html)
             
             # 5. Sonuç analizi
-            update_progress(6, "Sonuç analiz ediliyor...")
+            update_progress(7, "Sonuç analiz ediliyor...")
             
             logger.info(f"📊 Sonuç: {message}")
             result['status'] = message
