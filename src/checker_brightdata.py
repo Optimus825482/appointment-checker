@@ -43,8 +43,8 @@ class AppointmentChecker:
         payload = {
             "zone": "web_unlocker1",  # Zone name (default for Web Unlocker)
             "url": url,
-            "format": "raw",  # Raw HTML response
-            "country": "tr"   # Turkey proxy
+            "format": "raw"  # Raw HTML response
+            # "country": "tr" REMOVED - causing timeouts!
         }
         
         for attempt in range(1, max_retries + 1):
