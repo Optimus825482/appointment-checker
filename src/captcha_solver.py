@@ -1,4 +1,4 @@
-from mistralai import Mistral
+from mistralai.client import MistralClient
 from selenium.webdriver.common.by import By
 import base64
 import time
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 class CaptchaSolver:
     def __init__(self, api_key):
         self.api_key = api_key
-        self.client = Mistral(api_key=api_key) if api_key else None
+        self.client = MistralClient(api_key=api_key) if api_key else None
         self.model = "pixtral-12b-2409"
     
     def detect_captcha(self, driver):
@@ -28,7 +28,7 @@ class CaptchaSolver:
                 if elements:
                     logger.info(f"🎯 CAPTCHA tespit edildi: {selector}")
                     return elements[0]
-            except:
+            except Exception:
                 continue
         
         logger.info("✅ CAPTCHA bulunamadı")
@@ -62,7 +62,7 @@ class CaptchaSolver:
                 }
             ]
             
-            response = self.client.chat.complete(
+            response = self.client.chat(
                 model=self.model,
                 messages=messages,
                 temperature=0.1
