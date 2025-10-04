@@ -1,9 +1,9 @@
 from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 from apscheduler.schedulers.background import BackgroundScheduler
-from checker import AppointmentChecker
-from notifier import Notifier
-from database import Database
+from src.checker import AppointmentChecker
+from src.notifier import Notifier
+from src.database import Database
 from config.settings import Config
 import logging
 import time
