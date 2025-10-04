@@ -93,7 +93,10 @@ async function checkNow() {
     try {
         isCheckingNow = true;
         addLog('⚡ Anında kontrol yapılıyor...', 'info');
+        // Manuel kontrol sırasında TÜM butonları deaktif et
         document.getElementById('checkNowBtn').disabled = true;
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('stopBtn').disabled = true;
         
         // Progress card'ı göster
         showProgressCard();
@@ -127,8 +130,9 @@ async function checkNow() {
         showToast('Sunucuya bağlanılamadı!', 'error');
     } finally {
         setTimeout(() => {
-            document.getElementById('checkNowBtn').disabled = false;
             isCheckingNow = false; // Kilidi aç
+            // Scheduler durumuna göre butonları aktif et
+            loadStatus(); // Status'u yükle, o butonları düzenler
         }, 2000);
     }
 }
@@ -378,6 +382,9 @@ function updateUIState(monitoring) {
     document.getElementById('startBtn').disabled = monitoring;
     document.getElementById('stopBtn').disabled = !monitoring;
     document.getElementById('intervalInput').disabled = monitoring;
+    
+    // Zamanlanmış kontrol aktifken manuel butonu deaktif et
+    document.getElementById('checkNowBtn').disabled = monitoring;
 }
 
 // Log ekle

@@ -102,18 +102,19 @@
                         <label for="intervalInput">
                             <i class="fas fa-clock"></i> Kontrol Aralığı (saniye)
                         </label>
-                        <input type="number" id="intervalInput" value="60" min="30" max="600">
+                        <input type="number" id="intervalInput" value="1500" min="300" max="3600">
+                        <small class="text-muted">1500 saniye = 25 dakika</small>
                     </div>
 
                     <div class="button-group">
                         <button class="btn btn-primary" id="startBtn" onclick="startMonitoring()">
-                            <i class="fas fa-play"></i> İzlemeyi Başlat
+                            <i class="fas fa-play"></i> Zamanlanmış Kontrolü Başlat
                         </button>
                         <button class="btn btn-danger" id="stopBtn" onclick="stopMonitoring()" disabled>
                             <i class="fas fa-stop"></i> Durdur
                         </button>
                         <button class="btn btn-secondary" id="checkNowBtn" onclick="checkNow()">
-                            <i class="fas fa-sync-alt"></i> Şimdi Kontrol Et
+                            <i class="fas fa-sync-alt"></i> Manuel Kontrol Et
                         </button>
                     </div>
                 </div>

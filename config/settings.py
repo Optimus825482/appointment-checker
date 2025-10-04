@@ -19,7 +19,7 @@ class Config:
     APPOINTMENT_URL = 'https://it-tr-appointment.idata.com.tr/tr'
     
     # Kontrol Ayarları
-    CHECK_INTERVAL = int(os.getenv('CHECK_INTERVAL', 60))  # saniye
+    CHECK_INTERVAL = int(os.getenv('CHECK_INTERVAL', 1500))  # saniye (25 dakika)
     MAX_RETRIES = int(os.getenv('MAX_RETRIES', 5))
     CLOUDFLARE_TIMEOUT = int(os.getenv('CLOUDFLARE_TIMEOUT', 30))
     
