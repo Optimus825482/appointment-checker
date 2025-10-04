@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Randevu Kontrol Sistemi</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-calendar-check"></i> İtalya Vize Randevu Kontrol</h1>
+            <p class="subtitle">Otomatik randevu takip sistemi</p>
+        </header>
+
+        <div class="dashboard">
+            <!-- Durum Kartı -->
+            <div class="card status-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-info-circle"></i> Sistem Durumu</h2>
+                </div>
+                <div class="card-body">
+                    <div class="status-indicator">
+                        <div class="status-dot" id="statusDot"></div>
+                        <span id="statusText">Sistem hazır</span>
+                    </div>
+                    <div class="status-details">
+                        <p><strong>Son Kontrol:</strong> <span id="lastCheck">-</span></p>
+                        <p><strong>Sonuç:</strong> <span id="lastResult">-</span></p>
+                        <p><strong>Kontrol Aralığı:</strong> <span id="checkInterval">60</span> saniye</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kontrol Paneli -->
+            <div class="card control-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-sliders-h"></i> Kontrol Paneli</h2>
+                </div>
+                <div class="card-body">
+                    <div class="control-group">
+                        <label for="intervalInput">
+                            <i class="fas fa-clock"></i> Kontrol Aralığı (saniye)
+                        </label>
+                        <input type="number" id="intervalInput" value="60" min="30" max="600">
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn btn-primary" id="startBtn" onclick="startMonitoring()">
+                            <i class="fas fa-play"></i> İzlemeyi Başlat
+                        </button>
+                        <button class="btn btn-danger" id="stopBtn" onclick="stopMonitoring()" disabled>
+                            <i class="fas fa-stop"></i> Durdur
+                        </button>
+                        <button class="btn btn-secondary" id="checkNowBtn" onclick="checkNow()">
+                            <i class="fas fa-sync-alt"></i> Şimdi Kontrol Et
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- İstatistikler -->
+            <div class="card stats-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-chart-line"></i> İstatistikler</h2>
+                </div>
+                <div class="card-body">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <i class="fas fa-search"></i>
+                            <div class="stat-value" id="totalChecks">0</div>
+                            <div class="stat-label">Toplam Kontrol</div>
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-check-circle"></i>
+                            <div class="stat-value" id="successfulChecks">0</div>
+                            <div class="stat-label">Başarılı</div>
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-times-circle"></i>
+                            <div class="stat-value" id="failedChecks">0</div>
+                            <div class="stat-label">Başarısız</div>
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-calendar-check"></i>
+                            <div class="stat-value" id="appointmentsFound">0</div>
+                            <div class="stat-label">Randevu Bulundu</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canlı Log -->
+            <div class="card log-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-terminal"></i> Canlı Log</h2>
+                    <button class="btn-icon" onclick="clearLogs()" title="Logları Temizle">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="log-container" id="logContainer">
+                        <div class="log-entry info">
+                            <span class="log-time">--:--:--</span>
+                            <span class="log-message">Sistem hazır, izlemeyi başlatabilirsiniz...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Son Kontroller -->
+            <div class="card history-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-history"></i> Kontrol Geçmişi</h2>
+                    <button class="btn-icon" onclick="refreshHistory()" title="Yenile">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="history-container" id="historyContainer">
+                        <p class="text-muted">Henüz kontrol yapılmadı...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bildirim Toast -->
+    <div class="toast" id="toast">
+        <i class="fas fa-info-circle"></i>
+        <span id="toastMessage"></span>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+
+</html>

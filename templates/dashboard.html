@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Randevu Kontrol Paneli</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Randevu Kontrol Paneli</h1>
+        </header>
+        <main>
+            <section id="status">
+                <h2>Kontrol Durumu</h2>
+                <div id="status-message">
+                    <p>Randevu kontrolü devam ediyor...</p>
+                </div>
+            </section>
+            <section id="alerts">
+                <h2>Uyarılar</h2>
+                <div id="alert-messages">
+                    <p>Henüz bir randevu bulunamadı.</p>
+                </div>
+            </section>
+        </main>
+        <footer>
+            <p>&copy; 2023 Randevu Kontrol Sistemi</p>
+        </footer>
+    </div>
+</body>
+</html>

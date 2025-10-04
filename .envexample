@@ -1,0 +1,17 @@
+# Mistral API
+MISTRAL_API_KEY=your_mistral_api_key_here
+
+# Kontrol Ayarları
+CHECK_INTERVAL=60
+MAX_RETRIES=5
+
+# Bildirim (Opsiyonel)
+TELEGRAM_BOT_TOKEN=your_telegram_token
+TELEGRAM_CHAT_ID=your_chat_id
+EMAIL_SENDER=your_email@gmail.com
+EMAIL_PASSWORD=your_app_password
+EMAIL_RECEIVER=receiver@email.com
+
+# Chrome Ayarları (Railway için)
+CHROME_BIN=/nix/store/*-chromium-*/bin/chromium
+CHROMEDRIVER_PATH=/nix/store/*-chromedriver-*/bin/chromedriver
