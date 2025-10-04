@@ -67,7 +67,7 @@ last_captcha_text = None   # Son çözülen CAPTCHA metni
 
 def scheduled_check():
     """Zamanlanmış kontrol"""
-    global last_check_time, last_check_status, last_captcha_image, last_captcha_text
+    global last_check_time, last_check_status, last_captcha_image, last_captcha_text, monitoring_active
     
     try:
         logger.info("⏰ Zamanlanmış kontrol başladı")
@@ -88,7 +88,6 @@ def scheduled_check():
                 db.log_check("success", appointment_found=True)
                 
                 # Randevu bulununca izlemeyi durdur
-                global monitoring_active
                 monitoring_active = False
                 scheduler.pause()
             else:
@@ -100,7 +99,6 @@ def scheduled_check():
                 notifier.notify_appointment_found()
                 db.log_check("success", appointment_found=True)
                 
-                global monitoring_active
                 monitoring_active = False
                 scheduler.pause()
             else:
