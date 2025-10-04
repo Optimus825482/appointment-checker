@@ -4,6 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from src.checker_brightdata import AppointmentChecker  # Bright Data Unlocker API kullanıyor!
 from src.notifier import Notifier
 from src.database import Database
+from src.mysql_db import MySQLDatabase
 from config.settings import Config
 import logging
 import time
@@ -56,6 +57,7 @@ app.config.from_object(Config)
 checker = AppointmentChecker()
 notifier = Notifier()
 db = Database()
+mysql_db = MySQLDatabase()  # MySQL database handler
 scheduler = BackgroundScheduler()
 
 # Durum değişkenleri
@@ -71,10 +73,12 @@ def scheduled_check():
     
     try:
         logger.info("⏰ Zamanlanmış kontrol başladı")
-        last_check_time = time.time()
+        start_time = time.time()
+        last_check_time = start_time
         last_check_status = "Kontrol ediliyor..."
         
         result = checker.run_check()
+        response_time = int((time.time() - start_time) * 1000)  # milisaniye
         
         # CAPTCHA bilgilerini kaydet
         if isinstance(result, dict):
@@ -83,31 +87,57 @@ def scheduled_check():
             last_captcha_text = result.get('captcha_text')
             
             # Randevu kontrolü
-            if "RANDEVU VAR" in last_check_status:
+            appointment_found = "RANDEVU VAR" in last_check_status
+            
+            # MySQL'e kaydet
+            mysql_db.log_check(
+                status="success",
+                message=last_check_status,
+                captcha_text=last_captcha_text,
+                appointment_found=appointment_found,
+                response_time=response_time
+            )
+            
+            # SQLite'a da kaydet (backward compatibility)
+            db.log_check("success", appointment_found=appointment_found)
+            
+            if appointment_found:
                 notifier.notify_appointment_found()
-                db.log_check("success", appointment_found=True)
-                
                 # Randevu bulununca izlemeyi durdur
                 monitoring_active = False
                 scheduler.pause()
-            else:
-                db.log_check("success", appointment_found=False)
         else:
             # Eski format (string)
             last_check_status = str(result)
-            if result:
+            appointment_found = bool(result)
+            
+            # MySQL'e kaydet
+            mysql_db.log_check(
+                status="success",
+                message=last_check_status,
+                appointment_found=appointment_found,
+                response_time=response_time
+            )
+            
+            db.log_check("success", appointment_found=appointment_found)
+            
+            if appointment_found:
                 notifier.notify_appointment_found()
-                db.log_check("success", appointment_found=True)
-                
                 monitoring_active = False
                 scheduler.pause()
-            else:
-                db.log_check("success", appointment_found=False)
         
-        logger.info(f"✅ Kontrol tamamlandı: {last_check_status}")
+        logger.info(f"✅ Kontrol tamamlandı: {last_check_status} ({response_time}ms)")
         
     except Exception as e:
         last_check_status = f"❌ Hata: {str(e)}"
+        
+        # MySQL'e hata kaydet
+        mysql_db.log_check(
+            status="error",
+            error=str(e),
+            response_time=int((time.time() - start_time) * 1000) if 'start_time' in locals() else 0
+        )
+        
         db.log_check("error", error=str(e))
         logger.error(f"❌ Kontrol hatası: {e}")
 
@@ -202,20 +232,62 @@ def get_status():
 
 @app.route('/api/history')
 def get_history():
-    """Kontrol geçmişini getir"""
-    checks = db.get_recent_checks(limit=50)
-    
-    history = []
-    for check in checks:
-        history.append({
-            'id': check[0],
-            'timestamp': check[1],
-            'status': check[2],
-            'appointment_found': bool(check[3]),
-            'error': check[4]
+    """Kontrol geçmişini getir (MySQL'den)"""
+    try:
+        # MySQL'den logları getir
+        mysql_logs = mysql_db.get_recent_logs(limit=50)
+        
+        history = []
+        for log in mysql_logs:
+            history.append({
+                'id': log.get('id'),
+                'timestamp': log.get('timestamp').isoformat() if log.get('timestamp') else None,
+                'status': log.get('status'),
+                'message': log.get('message'),
+                'captcha_text': log.get('captcha_text'),
+                'appointment_found': bool(log.get('appointment_found')),
+                'error': log.get('error'),
+                'response_time': log.get('response_time')
+            })
+        
+        return jsonify(history)
+        
+    except Exception as e:
+        # MySQL hatası varsa SQLite'a fallback
+        logger.warning(f"⚠️ MySQL hata, SQLite kullanılıyor: {e}")
+        checks = db.get_recent_checks(limit=50)
+        
+        history = []
+        for check in checks:
+            history.append({
+                'id': check[0],
+                'timestamp': check[1],
+                'status': check[2],
+                'appointment_found': bool(check[3]),
+                'error': check[4]
+            })
+        
+        return jsonify(history)
+
+@app.route('/api/stats')
+def get_stats():
+    """MySQL istatistiklerini getir"""
+    try:
+        stats = mysql_db.get_stats()
+        return jsonify({
+            'total_checks': stats.get('total_checks', 0),
+            'successful_checks': stats.get('successful_checks', 0),
+            'failed_checks': stats.get('failed_checks', 0),
+            'appointments_found': stats.get('appointments_found', 0),
+            'success_rate': round(
+                (stats.get('successful_checks', 0) / stats.get('total_checks', 1)) * 100, 2
+            ) if stats.get('total_checks', 0) > 0 else 0,
+            'last_check_time': stats.get('last_check_time').isoformat() if stats.get('last_check_time') is not None else None,
+            'monitoring_active': stats.get('monitoring_active', False)
         })
-    
-    return jsonify(history)
+    except Exception as e:
+        logger.error(f"❌ Stats hatası: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/logs/recent')
 def get_recent_logs():

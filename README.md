@@ -55,7 +55,17 @@ git push origin main
      - `TELEGRAM_CHAT_ID` (opsiyonel)
    - Deploy!
 
-3. **Railway otomatik domain verir:**
+3. **MySQL Veritabanı Ekleyin (Önerilen):**
+   - Railway dashboard'da "New" → "Database" → "MySQL"
+   - Otomatik environment variables eklenir:
+     - `MYSQLHOST`
+     - `MYSQLPORT`
+     - `MYSQLDATABASE`
+     - `MYSQLUSER`
+     - `MYSQLPASSWORD`
+   - Uygulama otomatik MySQL'e bağlanır
+
+4. **Railway otomatik domain verir:**
    - `your-app.up.railway.app`
 
 ## 🔧 Konfigürasyon
