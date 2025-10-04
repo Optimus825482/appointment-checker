@@ -225,7 +225,7 @@ class AppointmentChecker:
                 api_url,
                 json=payload,
                 headers=headers,
-                timeout=30  # 30 saniye timeout (60'dan düşürüldü)
+                timeout=90  # 90 saniye timeout (Bright Data bazen yavaş olabiliyor)
             )
             
             logger.info(f"📡 Response Status: {response.status_code}")
