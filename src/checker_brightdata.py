@@ -63,7 +63,7 @@ class AppointmentChecker:
                     api_url,
                     json=payload,
                     headers=headers,
-                    timeout=90  # 90 saniye (Bright Data GERÇEKTEN bu kadar yavaş!)
+                    timeout=45  # 45 saniye (test sonuçlarına göre optimize edildi - max 44.74s görüldü)
                 )
                 
                 # Debug logging
@@ -225,7 +225,7 @@ class AppointmentChecker:
                 api_url,
                 json=payload,
                 headers=headers,
-                timeout=90  # 90 saniye timeout (Bright Data bazen yavaş olabiliyor)
+                timeout=45  # 45 saniye timeout (test sonuçlarına göre optimize edildi)
             )
             
             logger.info(f"📡 Response Status: {response.status_code}")
@@ -366,7 +366,7 @@ class AppointmentChecker:
                 "Content-Type": "application/json"
             }
             
-            response = requests.post(api_url, json=city_payload, headers=headers, timeout=90)
+            response = requests.post(api_url, json=city_payload, headers=headers, timeout=45)
             
             if response.status_code != 200:
                 logger.error(f"❌ Şehir seçimi başarısız: {response.status_code}")
@@ -426,7 +426,7 @@ class AppointmentChecker:
                 "body": f"city_id={izmir_option}&office_id={izmir_office}"
             }
             
-            response = requests.post(api_url, json=office_payload, headers=headers, timeout=90)
+            response = requests.post(api_url, json=office_payload, headers=headers, timeout=45)
             
             if response.status_code != 200:
                 logger.error(f"❌ Ofis seçimi başarısız: {response.status_code}")
@@ -479,7 +479,7 @@ class AppointmentChecker:
                 "body": f"city_id={izmir_option}&office_id={izmir_office}&visa_purpose_id={tourist_purpose}&service_type_id={standard_service}"
             }
             
-            response = requests.post(api_url, json=visa_payload, headers=headers, timeout=90)
+            response = requests.post(api_url, json=visa_payload, headers=headers, timeout=45)
             
             if response.status_code != 200:
                 logger.error(f"❌ Vize tipi seçimi başarısız: {response.status_code}")
@@ -499,7 +499,7 @@ class AppointmentChecker:
                 "body": f"city_id={izmir_option}&office_id={izmir_office}&visa_purpose_id={tourist_purpose}&service_type_id={standard_service}&applicant_count=1"
             }
             
-            response = requests.post(api_url, json=count_payload, headers=headers, timeout=90)
+            response = requests.post(api_url, json=count_payload, headers=headers, timeout=45)
             
             if response.status_code != 200:
                 logger.error(f"❌ Kişi sayısı ayarı başarısız: {response.status_code}")
