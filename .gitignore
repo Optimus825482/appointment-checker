@@ -59,7 +59,13 @@ credentials.json
 # Chrome
 *.crx
 *.pem
+chrome_profile/
+chrome_profile_test/
+chrome_profiles/
 
 # Temporary files
 *.tmp
 temp/
+
+# Test files
+test_*.py
