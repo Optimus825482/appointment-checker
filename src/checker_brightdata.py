@@ -166,6 +166,75 @@ class AppointmentChecker:
             logger.error(f"❌ CAPTCHA extraction hatası: {e}")
             return None
     
+    def submit_captcha(self, captcha_text):
+        """
+        CAPTCHA kodunu POST et ve form sayfasını al
+        
+        Args:
+            captcha_text: Mistral AI tarafından çözülen CAPTCHA metni
+            
+        Returns:
+            tuple: (success: bool, html: str)
+        """
+        try:
+            target_url = "https://it-tr-appointment.idata.com.tr/tr"
+            api_url = "https://api.brightdata.com/request"
+            
+            logger.info(f"📤 CAPTCHA POST ediliyor: {captcha_text}")
+            logger.info(f"🎯 Hedef URL: {target_url}")
+            
+            # Form data hazırla
+            payload = {
+                "zone": "web_unlocker1",
+                "url": target_url,
+                "format": "raw",
+                "country": "tr",
+                "method": "POST",
+                "headers": {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Referer": target_url,
+                    "Origin": "https://it-tr-appointment.idata.com.tr"
+                },
+                "body": f"mailConfirmCode={captcha_text}"
+            }
+            
+            headers = {
+                "Authorization": f"Bearer {self.config.BRIGHTDATA_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            
+            logger.info("🔄 POST isteği gönderiliyor...")
+            response = requests.post(
+                api_url,
+                json=payload,
+                headers=headers,
+                timeout=60
+            )
+            
+            logger.info(f"📡 Response Status: {response.status_code}")
+            
+            if response.status_code == 200:
+                html = response.text
+                logger.info(f"📊 Form sayfası boyutu: {len(html)} karakter")
+                
+                # Form sayfası kontrolü
+                if "appointment-form" in html or "BAŞVURU BİLGİLERİ" in html:
+                    logger.info("✅ Form sayfasına yönlendirme başarılı!")
+                    return True, html
+                elif "yanlış" in html.lower() or "hata" in html.lower():
+                    logger.warning("⚠️ CAPTCHA kodu yanlış girildi!")
+                    return False, None
+                else:
+                    logger.info("ℹ️ Sayfa içeriği belirsiz, HTML döndürülüyor")
+                    return True, html
+            else:
+                logger.error(f"❌ POST başarısız: {response.status_code}")
+                return False, None
+                
+        except Exception as e:
+            logger.error(f"❌ CAPTCHA POST hatası: {e}")
+            return False, None
+    
     def check_appointment_availability(self, html):
         """
         HTML'den randevu durumunu kontrol et
@@ -182,6 +251,28 @@ class AppointmentChecker:
             
             logger.info("🔍 Randevu durumu kontrol ediliyor...")
             
+            # Form sayfasında mıyız? (CAPTCHA geçildiyse)
+            if "appointment-form" in html or "BAŞVURU BİLGİLERİ" in html:
+                logger.info("📋 Form sayfasında - Randevu seçenekleri aranıyor...")
+                
+                # "Uygun randevu yok" alert div
+                no_appointment_alert = soup.find('div', class_='alert-danger')
+                if no_appointment_alert and "Uygun randevu tarihi bulunmamaktadır" in no_appointment_alert.get_text():
+                    logger.info("😔 'Uygun randevu tarihi bulunmamaktadır' mesajı bulundu")
+                    return False, "😔 Randevu yok"
+                
+                # "İLERİ" butonu var mı? (Randevu varsa görünür)
+                ileri_button = soup.find('a', id='btnAppCountNext')
+                if ileri_button and hasattr(ileri_button, 'get'):
+                    style = str(ileri_button.get('style', ''))
+                    if 'display: none' not in style:
+                        logger.info("✅ 'İLERİ' butonu aktif - RANDEVU VAR!")
+                        return True, "🎉 RANDEVU VAR!"
+                
+                logger.info("ℹ️ Form sayfası yüklendi ama randevu durumu belirsiz")
+                return False, "ℹ️ Form sayfası - durum belirsiz"
+            
+            # İlk sayfa (CAPTCHA sayfası)
             # "Randevu yok" mesajları
             no_appointment_keywords = [
                 "no appointment",
@@ -195,19 +286,11 @@ class AppointmentChecker:
                     logger.info(f"😔 '{keyword}' mesajı bulundu - Randevu yok")
                     return False, "😔 Randevu yok"
             
-            # Randevu butonları ara
-            appointment_buttons = soup.find_all(['button', 'a'], 
-                text=lambda t: t and any(word in t.lower() for word in ['randevu', 'appointment', 'müsait']))
-            
-            if appointment_buttons:
-                logger.info(f"🎉 Randevu butonu bulundu! ({len(appointment_buttons)} adet)")
-                return True, f"🎉 RANDEVU VAR! ({len(appointment_buttons)} müsait slot)"
-            
-            # Form submit butonu
-            submit_button = soup.find('button', type='submit')
-            if submit_button:
-                logger.info("✅ Submit butonu bulundu - Form doldurulabilir")
-                return True, "✅ Form doldurulabilir (submit butonu mevcut)"
+            # Randevu butonları ara (ilk sayfada)
+            appointment_count = text.count('randevu') + text.count('appointment')
+            if appointment_count > 0:
+                logger.info(f"🎉 Randevu referansları bulundu! ({appointment_count} adet)")
+                return True, f"🎉 RANDEVU VAR! ({appointment_count} referans)"
             
             logger.info("ℹ️ Net bir sonuç bulunamadı, daha fazla analiz gerekli")
             return False, "ℹ️ Belirsiz durum"
@@ -254,8 +337,16 @@ class AppointmentChecker:
                 
                 if captcha_text:
                     logger.info(f"✅ CAPTCHA çözüldü: {captcha_text}")
-                    # TODO: Form submission için CAPTCHA'yı kullan
-                    # Şimdilik sadece göster
+                    
+                    # CAPTCHA kodunu POST et
+                    logger.info("📤 CAPTCHA kodu POST ediliyor...")
+                    success, form_html = self.submit_captcha(captcha_text)
+                    
+                    if success and form_html:
+                        logger.info("✅ CAPTCHA POST başarılı, form sayfası alındı!")
+                        html = form_html  # Yeni HTML'i kullan
+                    else:
+                        logger.warning("⚠️ CAPTCHA POST başarısız, ilk sayfadaki HTML kullanılacak")
                 else:
                     logger.warning("⚠️ CAPTCHA çözülemedi!")
             else:
