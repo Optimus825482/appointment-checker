@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ['python311', 'chromium', 'chromedriver', 'pip']
+nixPkgs = ['python311', 'chromium', 'chromedriver']
 
 [phases.install]
 cmds = [
