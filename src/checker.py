@@ -2,6 +2,7 @@ import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 import time
@@ -76,57 +77,163 @@ class AppointmentChecker:
             logger.error(f"❌ Driver başlatma hatası: {e}")
             return False
     
-    def wait_for_cloudflare(self, timeout=30):
-        """Cloudflare doğrulamasını bekle"""
-        logger.info("�️ Cloudflare doğrulama süreci başlatılıyor...")
-        logger.info(f"⏱️ Maksimum bekleme süresi: {timeout} saniye")
+    def wait_for_cloudflare(self, timeout=90):
+        """
+        Cloudflare bypass - captcha_bot.py'den alındı
+        Cloudflare tarayıcı kontrolü/Turnstile geçene kadar bekle
+        """
+        logger.info("🛡️ Cloudflare bypass başlatılıyor...")
+        logger.info(f"⏱️ Maksimum bekleme: {timeout} saniye")
         
-        wait = WebDriverWait(self.driver, timeout)
+        start = time.time()
+        challenge_attempted = False
+        check_count = 0
+        
+        while time.time() - start < timeout:
+            check_count += 1
+            elapsed = int(time.time() - start)
+            
+            try:
+                ps = self.driver.page_source.lower()
+                url = (self.driver.current_url or '').lower()
+                title = (self.driver.title or "")
+                
+                # Cloudflare marker listesi (captcha_bot.py'den)
+                markers = [
+                    "cloudflare",
+                    "checking your browser",
+                    "just a moment",
+                    "cf-challenge",
+                    "turnstile",
+                    "attention required"
+                ]
+                
+                # Marker kontrolü
+                if any(m in ps or m in url for m in markers):
+                    if check_count % 5 == 1:  # Her 5 kontrolde bir log
+                        logger.info(f"⏳ Cloudflare marker bulundu ({elapsed}s)")
+                    
+                    # İlk denemede challenge handler çalıştır
+                    if not challenge_attempted:
+                        logger.info("🔍 Cloudflare challenge handler çağrılıyor...")
+                        solved = self.handle_cloudflare_challenge(timeout=20)
+                        if solved:
+                            logger.info("✅ Challenge çözüldü!")
+                            challenge_attempted = True
+                            time.sleep(1.5)
+                            continue
+                        challenge_attempted = True
+                    
+                    time.sleep(2)
+                    continue
+                
+                # Marker yok = başarılı!
+                logger.info(f"✅ Cloudflare başarıyla geçildi! ({elapsed} saniye)")
+                logger.info(f"📄 Sayfa başlığı: {title}")
+                logger.info(f"🔗 URL: {self.driver.current_url[:80]}...")
+                return True
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Kontrol sırasında hata: {e}")
+                time.sleep(2)
+        
+        # Timeout
+        logger.error(f"❌ Cloudflare timeout! ({timeout}s)")
+        logger.error(f"📄 Son başlık: {self.driver.title}")
+        return False
+    
+    def handle_cloudflare_challenge(self, timeout=25):
+        """
+        Cloudflare challenge iframe içinde checkbox/button arar ve tıklar
+        captcha_bot.py'den alındı
+        """
+        if self.driver is None:
+            return False
+        
+        drivers = self.driver
+        deadline = time.time() + max(5, timeout)
+        attempted_click = False
+        
+        while time.time() < deadline:
+            try:
+                frames = drivers.find_elements(By.CSS_SELECTOR, "iframe")
+            except Exception:
+                frames = []
+            
+            for frame in frames:
+                try:
+                    title = (frame.get_attribute("title") or "").lower()
+                    src = (frame.get_attribute("src") or "").lower()
+                    
+                    # Cloudflare/Turnstile iframe'i mi?
+                    if not any(keyword in (title + " " + src) for keyword in 
+                              ("cloudflare", "challenge", "turnstile", "hcaptcha")):
+                        continue
+                    
+                    # Iframe'e geç
+                    drivers.switch_to.frame(frame)
+                    
+                    # Tıklanabilir elementler
+                    selectors = [
+                        "input[type='checkbox']",
+                        "label[for]",
+                        "div.cf-turnstile",
+                        "button[type='submit']",
+                        "div[role='button']",
+                        "span.cb-lc"
+                    ]
+                    
+                    for selector in selectors:
+                        try:
+                            elements = drivers.find_elements(By.CSS_SELECTOR, selector)
+                        except Exception:
+                            continue
+                        
+                        for element in elements:
+                            try:
+                                if not element.is_displayed():
+                                    continue
+                                
+                                attempted_click = True
+                                
+                                # İnsan benzeri tıklama
+                                try:
+                                    element.click()
+                                    logger.info("✅ Cloudflare öğesine tıklandı")
+                                    drivers.switch_to.default_content()
+                                    return True
+                                except Exception:
+                                    # JS fallback
+                                    try:
+                                        drivers.execute_script("arguments[0].click();", element)
+                                        logger.info("✅ Cloudflare öğesine JS ile tıklandı")
+                                        drivers.switch_to.default_content()
+                                        return True
+                                    except Exception:
+                                        continue
+                            except Exception:
+                                continue
+                    
+                    drivers.switch_to.default_content()
+                except Exception:
+                    try:
+                        drivers.switch_to.default_content()
+                    except Exception:
+                        pass
+            
+            time.sleep(1.5)
         
         try:
-            # Sayfanın yüklenmesini bekle
-            initial_wait = random.uniform(3, 5)
-            logger.info(f"⏳ İlk sayfa yükleme bekleniyor ({initial_wait:.1f} saniye)...")
-            time.sleep(initial_wait)
-            
-            # Cloudflare challenge geçilene kadar bekle
-            logger.info("🔍 Sayfa durumu kontrol ediliyor...")
-            wait.until(lambda driver: driver.execute_script(
-                "return document.readyState === 'complete' && document.body.innerText.length > 100"
-            ))
-            logger.info("✅ Sayfa tamamen yüklendi (readyState: complete)")
-            
-            # "Doğrulanıyor" yazısının kaybolmasını bekle
-            max_wait = 30
-            start_time = time.time()
-            logger.info(f"🔄 Cloudflare challenge kontrolü başlıyor (max {max_wait} saniye)...")
-            
-            check_count = 0
-            while time.time() - start_time < max_wait:
-                check_count += 1
-                elapsed = int(time.time() - start_time)
-                
-                page_text = self.driver.find_element(By.TAG_NAME, 'body').text.lower()
-                
-                if check_count % 5 == 1:  # Her 5 kontrolde bir log
-                    logger.info(f"⏱️ Cloudflare kontrol #{check_count} ({elapsed}/{max_wait} saniye)")
-                
-                if 'doğrulanıyor' not in page_text and 'verifying' not in page_text:
-                    logger.info(f"✅ Cloudflare challenge geçildi! (toplam {elapsed} saniye)")
-                    logger.info("🎉 Artık ana sayfaya erişim sağlandı!")
-                    return True
-                else:
-                    if check_count <= 2:
-                        logger.info("⏳ Cloudflare 'Doğrulanıyor' ekranı görünüyor, bekleniyor...")
-                
-                time.sleep(1)
-            
-            logger.warning(f"⏱️ Cloudflare timeout! {max_wait} saniye içinde geçilemedi")
-            return False
-            
-        except Exception as e:
-            logger.error(f"❌ Cloudflare hatası: {e}")
-            return False
+            drivers.switch_to.default_content()
+        except Exception:
+            pass
+        
+        if attempted_click:
+            logger.warning("⚠️ Cloudflare tıklama denendi ama başarısız")
+        else:
+            logger.info("ℹ️ Cloudflare challenge elementi bulunamadı")
+        
+        return False
     
     def human_like_behavior(self):
         """İnsan benzeri davranış simülasyonu"""
@@ -240,37 +347,27 @@ class AppointmentChecker:
             # Sayfayı aç
             logger.info(f"🌐 Hedef URL'ye gidiliyor: {self.config.APPOINTMENT_URL}")
             self.driver.get(self.config.APPOINTMENT_URL)
-            logger.info("✅ Sayfa yükleme başlatıldı")
             
-            # Cloudflare'i geç (Sayfa 1)
-            logger.info("🛡️ Cloudflare bypass işlemi başlıyor (Sayfa 1)...")
-            if not self.wait_for_cloudflare():
+            # İlk yükleme bekleme
+            try:
+                logger.info("⏳ CAPTCHA elementi bekleniyor (12s)...")
+                WebDriverWait(self.driver, 12).until(
+                    EC.presence_of_element_located((By.CLASS_NAME, "imageCaptcha"))
+                )
+                logger.info("✅ CAPTCHA elementi bulundu!")
+            except TimeoutException:
+                logger.info("⏳ CAPTCHA yüklenene kadar ek bekleme...")
+                time.sleep(random.uniform(0.42, 0.68))
+            
+            # Cloudflare'i geç - TAM captcha_bot.py metodolojisi!
+            logger.info("🛡️ Cloudflare bypass işlemi başlıyor...")
+            if not self.wait_for_cloudflare(timeout=90):
                 logger.error("❌ Cloudflare geçilemedi!")
                 return False
             logger.info("✅ Cloudflare başarıyla bypass edildi!")
             
-            # Sayfa yönlendirmesini bekle (Cloudflare → Form sayfası)
-            logger.info("⏳ Sayfa yönlendirmesi bekleniyor...")
-            max_wait = 15
-            start_time = time.time()
-            
-            while time.time() - start_time < max_wait:
-                current_title = self.driver.title
-                current_url = self.driver.current_url
-                
-                logger.info(f"🔍 Kontrol: Başlık='{current_title}', URL='{current_url[:60]}...'")
-                
-                # Cloudflare başlığından kurtulduk mu?
-                if "cloudflare" not in current_title.lower():
-                    logger.info(f"✅ Form sayfasına yönlendirildi! Başlık: {current_title}")
-                    break
-                
-                time.sleep(2)
-            else:
-                logger.warning("⚠️ Form sayfasına yönlendirilmedi, devam ediliyor...")
-            
-            # Ekstra bekleme
-            logger.info("⏳ Sayfa tamamen yüklenmesi için bekleniyor (3 saniye)...")
+            # Sayfa yönlendirmesi
+            logger.info("⏳ Form sayfası yükleniyor...")
             time.sleep(3)
             
             # İnsan benzeri davranış
@@ -280,7 +377,7 @@ class AppointmentChecker:
             self.human_like_behavior()
             logger.info("✅ İnsan benzeri hareketler tamamlandı")
             
-            # CAPTCHA kontrolü (Sayfa 2'de)
+            # CAPTCHA kontrolü
             logger.info("🔐 CAPTCHA çözme modülü başlatılıyor...")
             logger.info(f"📄 Şu anki sayfa URL'si: {self.driver.current_url}")
             logger.info(f"📄 Sayfa başlığı: {self.driver.title}")
@@ -292,7 +389,7 @@ class AppointmentChecker:
             
             from src.captcha_solver import CaptchaSolver
             solver = CaptchaSolver(self.config.MISTRAL_API_KEY)
-            logger.info("🎯 CAPTCHA tespit ve çözüm süreci başlıyor (Sayfa 2)...")
+            logger.info("🎯 CAPTCHA tespit ve çözüm süreci başlıyor...")
             
             if not solver.solve_captcha(self.driver):
                 logger.error("❌ CAPTCHA çözülemedi!")
