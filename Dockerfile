@@ -38,12 +38,13 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Uygulama dosyaları
 COPY . .
 
+# Start script'i kopyala ve executable yap
+COPY start.sh .
+RUN chmod +x start.sh
+
 # Chrome binary konumu
 ENV CHROME_BIN=/usr/bin/chromium
 ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
 
-# Port (Railway otomatik set eder)
-ENV PORT=5000
-
-# Başlatma komutu - PORT değişkeni shell ile çözümlenir
-CMD gunicorn src.app:app --bind 0.0.0.0:${PORT} --timeout 120 --workers 1 --log-level info
+# Başlatma
+ENTRYPOINT ["./start.sh"]
