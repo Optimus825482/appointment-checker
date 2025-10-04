@@ -87,21 +87,34 @@ async function checkNow() {
         addLog('⚡ Anında kontrol yapılıyor...', 'info');
         document.getElementById('checkNowBtn').disabled = true;
         
+        // Progress card'ı göster
+        showProgressCard();
+        resetProgress();
+        
+        // Progress polling başlat
+        const progressPoll = setInterval(updateProgress, 500);
+        
         const response = await fetch('/api/check-now', {
             method: 'POST'
         });
         
+        clearInterval(progressPoll);
+        
         const data = await response.json();
         
         if (response.ok) {
+            setProgress(6, 'Tamamlandı!');
+            setTimeout(() => hideProgressCard(), 2000);
             addLog(`✅ Kontrol tamamlandı: ${data.result}`, 'success');
             showToast('Kontrol tamamlandı!', 'success');
             loadHistory();
         } else {
+            hideProgressCard();
             addLog(`❌ Kontrol hatası: ${data.error}`, 'error');
             showToast(data.error, 'error');
         }
     } catch (error) {
+        hideProgressCard();
         addLog(`❌ Bağlantı hatası: ${error.message}`, 'error');
         showToast('Sunucuya bağlanılamadı!', 'error');
     } finally {
@@ -109,6 +122,63 @@ async function checkNow() {
             document.getElementById('checkNowBtn').disabled = false;
         }, 2000);
     }
+}
+
+// Progress card göster/gizle
+function showProgressCard() {
+    const card = document.getElementById('progressCard');
+    card.style.display = 'block';
+    card.style.animation = 'fadeIn 0.3s ease';
+}
+
+function hideProgressCard() {
+    const card = document.getElementById('progressCard');
+    card.style.animation = 'fadeOut 0.3s ease';
+    setTimeout(() => {
+        card.style.display = 'none';
+    }, 300);
+}
+
+// Progress güncelle
+async function updateProgress() {
+    try {
+        const response = await fetch('/api/progress');
+        const data = await response.json();
+        
+        if (data.step > 0) {
+            setProgress(data.step, data.message);
+        }
+    } catch (error) {
+        console.error('Progress güncelleme hatası:', error);
+    }
+}
+
+// Progress set et
+function setProgress(step, message) {
+    // Progress bar güncelle
+    const progressBar = document.getElementById('progressBar');
+    const percentage = (step / 6) * 100;
+    progressBar.style.width = `${percentage}%`;
+    
+    // Message güncelle
+    document.getElementById('progressMessage').textContent = message;
+    
+    // Step'leri güncelle
+    for (let i = 1; i <= 6; i++) {
+        const stepEl = document.getElementById(`step${i}`);
+        stepEl.classList.remove('active', 'completed');
+        
+        if (i < step) {
+            stepEl.classList.add('completed');
+        } else if (i === step) {
+            stepEl.classList.add('active');
+        }
+    }
+}
+
+// Progress resetle
+function resetProgress() {
+    setProgress(0, 'Başlatılıyor...');
 }
 
 // Durum güncelleme polling

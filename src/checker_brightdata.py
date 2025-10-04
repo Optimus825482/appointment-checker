@@ -326,9 +326,12 @@ class AppointmentChecker:
             logger.error(f"❌ HTML analiz hatası: {e}")
             return False, f"❌ Hata: {e}"
     
-    def run_check(self):
+    def run_check(self, progress_callback=None):
         """
         Ana kontrol döngüsü - Bright Data Unlocker API ile
+        
+        Args:
+            progress_callback: Progress güncellemesi için callback fonksiyonu
         
         Returns:
             dict: {
@@ -343,11 +346,17 @@ class AppointmentChecker:
             'captcha_text': None
         }
         
+        def update_progress(step, message):
+            """Progress callback helper"""
+            if progress_callback:
+                progress_callback(step, message)
+        
         try:
             logger.info("🚀 Kontrol başlatılıyor...")
             logger.info("🌐 Bright Data Unlocker API kullanılıyor (Selenium YOK!)")
             
             # 1. Sayfa getir (Cloudflare bypass dahil!)
+            update_progress(1, "URL'ye bağlanılıyor...")
             success, html, status_code = self.fetch_with_brightdata(self.config.APPOINTMENT_URL)
             
             if not success:
@@ -356,6 +365,7 @@ class AppointmentChecker:
                 return result
             
             # 2. Cloudflare kontrolü
+            update_progress(2, "Cloudflare kontrolü...")
             if "cloudflare" in html.lower() or "attention required" in html.lower():
                 logger.error("❌ Bright Data bile Cloudflare'ı geçemedi!")
                 logger.error("💡 Bu çok nadir bir durum, API key'i kontrol edin")
@@ -366,6 +376,7 @@ class AppointmentChecker:
             logger.info(f"📄 HTML boyutu: {len(html)} karakter")
             
             # 3. CAPTCHA var mı kontrol et
+            update_progress(3, "CAPTCHA algılanıyor...")
             captcha_data = self.extract_captcha_from_html(html)
             
             if captcha_data:
@@ -378,6 +389,7 @@ class AppointmentChecker:
                 solver = CaptchaSolver(self.config.MISTRAL_API_KEY)
                 
                 # CAPTCHA'yı çöz
+                update_progress(3, "CAPTCHA çözülüyor (Mistral AI)...")
                 captcha_text = solver.solve_captcha_from_base64(captcha_data)
                 
                 if captcha_text:
@@ -387,6 +399,7 @@ class AppointmentChecker:
                     result['captcha_text'] = captcha_text
                     
                     # CAPTCHA kodunu POST et
+                    update_progress(4, "CAPTCHA gönderiliyor...")
                     logger.info("📤 CAPTCHA kodu POST ediliyor...")
                     success, form_html = self.submit_captcha(captcha_text)
                     
@@ -401,7 +414,11 @@ class AppointmentChecker:
                 logger.info("ℹ️ CAPTCHA bulunamadı veya gerekli değil")
             
             # 4. Randevu durumunu kontrol et
+            update_progress(5, "Form sayfası yükleniyor...")
             available, message = self.check_appointment_availability(html)
+            
+            # 5. Sonuç analizi
+            update_progress(6, "Sonuç analiz ediliyor...")
             
             logger.info(f"📊 Sonuç: {message}")
             result['status'] = message

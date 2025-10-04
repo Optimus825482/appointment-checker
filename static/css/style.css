@@ -492,6 +492,18 @@ header h1 {
     }
 }
 
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
 @keyframes pulse {
 
     0%,
@@ -509,6 +521,106 @@ header h1 {
     animation: pulse 0.5s ease-in-out;
 }
 
+/* Progress Bar Styles */
+.progress-card {
+    grid-column: 1 / -1;
+}
+
+.progress-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 15px;
+    background: var(--dark-bg);
+    border-radius: 10px;
+    border: 2px solid var(--border-color);
+    transition: all 0.3s ease;
+    opacity: 0.5;
+}
+
+.step.active {
+    opacity: 1;
+    border-color: var(--primary-color);
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(33, 150, 243, 0.1));
+    transform: scale(1.05);
+}
+
+.step.completed {
+    opacity: 1;
+    border-color: var(--primary-color);
+    background: rgba(76, 175, 80, 0.2);
+}
+
+.step-icon {
+    font-size: 2rem;
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+}
+
+.step.active .step-icon,
+.step.completed .step-icon {
+    color: var(--primary-color);
+    animation: bounce 0.5s ease;
+}
+
+@keyframes bounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.step-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.step.active .step-label,
+.step.completed .step-label {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: var(--dark-bg);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--info-color));
+    transition: width 0.5s ease;
+    width: 0%;
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+}
+
+.progress-message {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    padding: 10px;
+    background: var(--dark-bg);
+    border-radius: 8px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .dashboard {
@@ -521,5 +633,9 @@ header h1 {
 
     .stats-grid {
         grid-template-columns: 1fr;
+    }
+
+    .progress-steps {
+        grid-template-columns: repeat(2, 1fr);
     }
 }

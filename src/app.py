@@ -67,6 +67,25 @@ last_check_status = "Henüz kontrol yapılmadı"
 last_captcha_image = None  # Son CAPTCHA görseli (base64)
 last_captcha_text = None   # Son çözülen CAPTCHA metni
 
+# Progress tracking
+current_progress = {
+    'step': 0,
+    'total_steps': 6,
+    'message': 'Hazır',
+    'timestamp': time.time()
+}
+
+def update_progress(step, message):
+    """Progress state'i güncelle"""
+    global current_progress
+    current_progress = {
+        'step': step,
+        'total_steps': 6,
+        'message': message,
+        'timestamp': time.time()
+    }
+    logger.info(f"📊 Progress: [{step}/6] {message}")
+
 def scheduled_check():
     """Zamanlanmış kontrol"""
     global last_check_time, last_check_status, last_captcha_image, last_captcha_text, monitoring_active
@@ -77,7 +96,8 @@ def scheduled_check():
         last_check_time = start_time
         last_check_status = "Kontrol ediliyor..."
         
-        result = checker.run_check()
+        # Progress tracking ile kontrol yap
+        result = checker.run_check(progress_callback=update_progress)
         response_time = int((time.time() - start_time) * 1000)  # milisaniye
         
         # CAPTCHA bilgilerini kaydet
@@ -227,8 +247,14 @@ def get_status():
         'last_check_status': last_check_status,
         'check_interval': Config.CHECK_INTERVAL,
         'captcha_image': last_captcha_image,
-        'captcha_text': last_captcha_text
+        'captcha_text': last_captcha_text,
+        'progress': current_progress  # Progress bilgisi ekle
     })
+
+@app.route('/api/progress')
+def get_progress():
+    """Progress durumunu getir"""
+    return jsonify(current_progress)
 
 @app.route('/api/history')
 def get_history():
