@@ -163,6 +163,62 @@ class CaptchaSolver:
             logger.error(f"❌ CAPTCHA çözüm hatası: {e}")
             return False
     
+    def solve_captcha_from_base64(self, base64_data):
+        """
+        Base64 CAPTCHA görselini Mistral ile çöz (Bright Data için)
+        
+        Args:
+            base64_data: data:image/png;base64,XXXXX formatında base64 string
+            
+        Returns:
+            str: CAPTCHA metni veya None
+        """
+        if not self.client:
+            logger.error("❌ Mistral API anahtarı yok!")
+            return None
+        
+        try:
+            # data:image/png;base64,XXXXX formatını kontrol et
+            if not base64_data.startswith("data:image"):
+                logger.error("❌ Base64 data geçerli formatta değil!")
+                return None
+            
+            logger.info("📸 Base64 CAPTCHA verisi işleniyor...")
+            
+            # Mistral'a gönder
+            logger.info(f"🤖 Mistral AI Vision API'ye gönderiliyor (model: {self.model})...")
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Bu CAPTCHA görüntüsündeki 6 karakterli metni oku. Sadece büyük harflerle karakterleri ver, başka açıklama yapma."
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": base64_data
+                        }
+                    ]
+                }
+            ]
+            
+            logger.info("⏳ Mistral AI yanıtı bekleniyor...")
+            response = self.client.chat(
+                model=self.model,
+                messages=messages,
+                temperature=0.1
+            )
+            
+            captcha_text = response.choices[0].message.content.strip().upper()
+            logger.info(f"🔤 Mistral AI tarafından tespit edilen CAPTCHA metni: '{captcha_text}'")
+            
+            return captcha_text
+            
+        except Exception as e:
+            logger.error(f"❌ CAPTCHA çözüm hatası: {e}")
+            return None
+    
     def solve_captcha(self, driver, max_retries=3):
         """Ana CAPTCHA çözüm fonksiyonu"""
         logger.info(f"🎯 CAPTCHA çözüm süreci başlatıldı (maksimum {max_retries} deneme hakkı)")

@@ -12,6 +12,9 @@ class Config:
     # Mistral AI
     MISTRAL_API_KEY = os.getenv('MISTRAL_API_KEY')
     
+    # Bright Data Unlocker API
+    BRIGHTDATA_API_KEY = os.getenv('BRIGHTDATA_API_KEY')
+    
     # Randevu URL
     APPOINTMENT_URL = 'https://it-tr-appointment.idata.com.tr/tr'
     

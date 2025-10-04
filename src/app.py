@@ -1,7 +1,7 @@
 from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 from apscheduler.schedulers.background import BackgroundScheduler
-from src.checker import AppointmentChecker
+from src.checker_brightdata import AppointmentChecker  # Bright Data Unlocker API kullanıyor!
 from src.notifier import Notifier
 from src.database import Database
 from config.settings import Config
