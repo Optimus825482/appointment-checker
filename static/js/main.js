@@ -113,13 +113,13 @@ async function checkNow() {
 
 // Durum güncelleme polling
 function startStatusPolling() {
-    statusInterval = setInterval(loadStatus, 3000); // 3 saniyede bir
-    statsInterval = setInterval(loadHistory, 10000); // 10 saniyede bir
+    statusInterval = setInterval(loadStatus, 1000); // 1 saniyede bir (HIZLI!)
+    statsInterval = setInterval(loadHistory, 5000); // 5 saniyede bir
 }
 
 // Detaylı log polling (gerçek zamanlı backend logları)
 function startDetailedLogsPolling() {
-    detailedLogsInterval = setInterval(loadDetailedLogs, 2000); // 2 saniyede bir
+    detailedLogsInterval = setInterval(loadDetailedLogs, 500); // 0.5 saniyede bir (ÇOK HIZLI!)
     loadDetailedLogs(); // İlk yüklemeyi hemen yap
 }
 
@@ -195,13 +195,39 @@ async function loadStatus() {
         document.getElementById('lastResult').textContent = data.last_check_status;
         document.getElementById('checkInterval').textContent = data.check_interval;
         
-        // CAPTCHA görselini göster
+        // CAPTCHA görselini göster (otomatik güncelleme)
+        const captchaCard = document.getElementById('captchaCard');
+        const captchaImage = document.getElementById('captchaImage');
+        const captchaText = document.getElementById('captchaText');
+        
         if (data.captcha_image) {
-            document.getElementById('captchaCard').style.display = 'block';
-            document.getElementById('captchaImage').src = data.captcha_image;
-            document.getElementById('captchaText').textContent = data.captcha_text || '-';
+            // CAPTCHA varsa kartı göster
+            if (captchaCard.style.display === 'none') {
+                captchaCard.style.display = 'block';
+                captchaCard.style.animation = 'fadeIn 0.3s ease-in';
+            }
+            
+            // Görsel değiştiyse güncelle (smooth transition)
+            if (captchaImage.src !== data.captcha_image) {
+                captchaImage.style.opacity = '0.3';
+                setTimeout(() => {
+                    captchaImage.src = data.captcha_image;
+                    captchaImage.style.opacity = '1';
+                }, 150);
+            }
+            
+            // Metin değiştiyse güncelle (smooth transition)
+            if (captchaText.textContent !== (data.captcha_text || '-')) {
+                captchaText.style.transform = 'scale(1.2)';
+                captchaText.style.color = '#28a745';
+                captchaText.textContent = data.captcha_text || '-';
+                setTimeout(() => {
+                    captchaText.style.transform = 'scale(1)';
+                    captchaText.style.color = '#007bff';
+                }, 300);
+            }
         } else {
-            document.getElementById('captchaCard').style.display = 'none';
+            captchaCard.style.display = 'none';
         }
         
         updateUIState(data.monitoring_active);

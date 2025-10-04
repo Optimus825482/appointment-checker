@@ -467,6 +467,48 @@ header h1 {
     padding: 20px;
 }
 
+/* CAPTCHA Smooth Transitions */
+#captchaImage {
+    transition: opacity 0.3s ease-in-out;
+}
+
+#captchaText {
+    transition: all 0.3s ease-in-out;
+}
+
+.captcha-container {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+/* Real-time Update Indicator */
+.updating {
+    animation: pulse 0.5s ease-in-out;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .dashboard {

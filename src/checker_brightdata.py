@@ -208,7 +208,7 @@ class AppointmentChecker:
                 api_url,
                 json=payload,
                 headers=headers,
-                timeout=60
+                timeout=30  # 30 saniye timeout (60'dan düşürüldü)
             )
             
             logger.info(f"📡 Response Status: {response.status_code}")
@@ -217,16 +217,43 @@ class AppointmentChecker:
                 html = response.text
                 logger.info(f"📊 Form sayfası boyutu: {len(html)} karakter")
                 
-                # Form sayfası kontrolü
-                if "appointment-form" in html or "BAŞVURU BİLGİLERİ" in html:
+                # HTML'i küçük harfe çevir (performans için sadece bir kez)
+                html_lower = html.lower()
+                
+                # Form sayfası kontrolü (geliştirilmiş)
+                form_indicators = [
+                    "appointment-form",
+                    "başvuru bilgileri",
+                    "ikametgah şehri",
+                    "idata ofisi seçiniz",
+                    "gidiş amacı",
+                    "hizmet türü"
+                ]
+                
+                error_indicators = [
+                    "yanlış",
+                    "hatalı",
+                    "geçersiz",
+                    "invalid",
+                    "incorrect",
+                    "wrong"
+                ]
+                
+                # Form sayfası mı?
+                if any(indicator in html_lower for indicator in form_indicators):
                     logger.info("✅ Form sayfasına yönlendirme başarılı!")
+                    logger.info("📋 Başvuru formu sayfası tespit edildi")
                     return True, html
-                elif "yanlış" in html.lower() or "hata" in html.lower():
+                
+                # Hata sayfası mı?
+                if any(error in html_lower for error in error_indicators):
                     logger.warning("⚠️ CAPTCHA kodu yanlış girildi!")
                     return False, None
-                else:
-                    logger.info("ℹ️ Sayfa içeriği belirsiz, HTML döndürülüyor")
-                    return True, html
+                
+                # Belirsiz ama HTML var
+                logger.info("ℹ️ Sayfa içeriği belirsiz, HTML döndürülüyor")
+                logger.info(f"📄 HTML Preview: {html[:200]}...")
+                return True, html
             else:
                 logger.error(f"❌ POST başarısız: {response.status_code}")
                 return False, None
