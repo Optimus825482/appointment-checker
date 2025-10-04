@@ -238,26 +238,47 @@ class AppointmentChecker:
             logger.info("   📌 SeleniumBase uc_open_with_reconnect() kullanılıyor...")
             logger.info("   📌 Bu metod Cloudflare'i otomatik geçmek için 4 deneme yapacak")
             
-            # UC mode ile sayfa aç (4 reconnect denemesi)
-            self.driver.uc_open_with_reconnect(self.config.APPOINTMENT_URL, reconnect_time=4)
+            # UC mode ile sayfa aç (daha uzun reconnect süresi!)
+            self.driver.uc_open_with_reconnect(self.config.APPOINTMENT_URL, reconnect_time=8)
             
-            logger.info("✅ Sayfa yüklendi!")
+            logger.info("✅ İlk sayfa yükleme tamamlandı!")
             logger.info(f"📄 Başlık: {self.driver.title}")
             
-            # Cloudflare Turnstile CAPTCHA varsa otomatik çöz
-            logger.info("🤖 Cloudflare Turnstile CAPTCHA kontrolü...")
-            try:
-                self.driver.uc_gui_click_captcha()
-                logger.info("✅ Turnstile CAPTCHA çözüldü (veya yoktu)!")
-            except Exception as e:
-                logger.info(f"ℹ️ Turnstile bulunamadı veya gerekli değil: {e}")
+            # Cloudflare geçilene kadar bekle
+            max_wait = 60
+            start_time = time.time()
+            cloudflare_passed = False
             
-            # Sayfa tamamen yüklenene kadar bekle
-            logger.info("⏳ Sayfa tamamen yükleniyor...")
-            time.sleep(3)
+            logger.info(f"⏳ Cloudflare bypass bekleniyor (max {max_wait}s)...")
+            
+            while time.time() - start_time < max_wait:
+                current_title = self.driver.title
+                elapsed = int(time.time() - start_time)
+                
+                # Cloudflare marker kontrolü
+                if "cloudflare" not in current_title.lower() and "attention required" not in current_title.lower():
+                    logger.info(f"✅ Cloudflare geçildi! ({elapsed}s)")
+                    logger.info(f"📄 Yeni başlık: {current_title}")
+                    cloudflare_passed = True
+                    break
+                
+                if elapsed % 10 == 0:
+                    logger.info(f"⏳ Hala Cloudflare'da... ({elapsed}s / {max_wait}s)")
+                    logger.info(f"   Başlık: {current_title[:60]}...")
+                
+                time.sleep(3)
+            
+            if not cloudflare_passed:
+                logger.error(f"❌ Cloudflare {max_wait} saniyede geçilemedi!")
+                logger.error(f"📄 Son başlık: {self.driver.title}")
+                return False
+            
+            # Sayfa tamamen yüklensin
+            logger.info("⏳ Sayfa stabilize oluyor...")
+            time.sleep(5)
             
             logger.info(f"📄 Final başlık: {self.driver.title}")
-            logger.info(f"� URL: {self.driver.current_url[:80]}...")
+            logger.info(f"🔗 URL: {self.driver.current_url[:80]}...")
             
             # CAPTCHA elementi var mı kontrol et
             try:
@@ -266,10 +287,11 @@ class AppointmentChecker:
                     logger.info("✅ Form sayfasına ulaşıldı - CAPTCHA elementi bulundu!")
                 else:
                     logger.warning("⚠️ CAPTCHA elementi bulunamadı!")
+                    logger.warning("   Sayfa hala Cloudflare'da olabilir!")
             except Exception as e:
                 logger.warning(f"⚠️ CAPTCHA kontrol hatası: {e}")
             
-            logger.info("✅ Cloudflare başarıyla bypass edildi (SeleniumBase UC Mode)!")
+            logger.info("✅ Cloudflare bypass süreci tamamlandı!")
             
             # İnsan benzeri davranış
             wait_time = random.uniform(2, 4)
