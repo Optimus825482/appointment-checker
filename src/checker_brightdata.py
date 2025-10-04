@@ -51,8 +51,8 @@ class AppointmentChecker:
         payload = {
             "zone": "web_unlocker1",  # Zone name (default for Web Unlocker)
             "url": url,
-            "format": "raw"  # Raw HTML response
-            # "country": "tr" REMOVED - causing timeouts!
+            "format": "raw",  # Raw HTML response
+            "country": "tr"   # Turkey proxy (TESTED: WORKS!)
         }
         
         for attempt in range(1, max_retries + 1):
@@ -63,7 +63,7 @@ class AppointmentChecker:
                     api_url,
                     json=payload,
                     headers=headers,
-                    timeout=20  # 20 saniye (ücretli API hızlı olmalı!)
+                    timeout=90  # 90 saniye (Bright Data GERÇEKTEN bu kadar yavaş!)
                 )
                 
                 # Debug logging
